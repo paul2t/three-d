@@ -1,7 +1,7 @@
 use crate::Context;
 use crate::SurfaceSettings;
 use crate::WindowError;
-use std::sync::Arc;
+use std::rc::Rc;
 use winit::window::Window;
 
 #[cfg(target_arch = "wasm32")]
@@ -67,7 +67,7 @@ mod inner {
                 .map_err(|e| WindowError::OESTextureFloatNotSupported(format!(": {:?}", e)))?;
 
             Ok(Self {
-                context: Context::from_gl_context(Arc::new(
+                context: Context::from_gl_context(Rc::new(
                     crate::context::Context::from_webgl2_context(webgl_context),
                 ))?,
             })
@@ -193,7 +193,7 @@ mod inner {
             gl_surface.set_swap_interval(&gl_context, swap_interval)?;
 
             Ok(Self {
-                context: Context::from_gl_context(Arc::new(unsafe {
+                context: Context::from_gl_context(Rc::new(unsafe {
                     crate::context::Context::from_loader_function(|s| {
                         let s = std::ffi::CString::new(s)
                             .expect("failed to construct C string from string for gl proc address");
