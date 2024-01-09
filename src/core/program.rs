@@ -15,6 +15,7 @@ pub struct Program {
     textures: RwLock<HashMap<String, u32>>,
     uniforms: HashMap<String, crate::context::UniformLocation>,
     uniform_blocks: RwLock<HashMap<String, (u32, u32)>>,
+    mode: u32,
 }
 
 impl Program {
@@ -25,6 +26,24 @@ impl Program {
         context: &Context,
         vertex_shader_source: &str,
         fragment_shader_source: &str,
+    ) -> Result<Self, CoreError> {
+        Self::from_source_mode(
+            context,
+            vertex_shader_source,
+            fragment_shader_source,
+            crate::context::TRIANGLES,
+        )
+    }
+
+    ///
+    /// Creates a new shader program from the given vertex, fragment glsl shader source and OpenGL mode.
+    /// See [crate::context::TRIANGLES] and [crate::context::LINES] for example.
+    ///
+    pub fn from_source_mode(
+        context: &Context,
+        vertex_shader_source: &str,
+        fragment_shader_source: &str,
+        mode: u32,
     ) -> Result<Self, CoreError> {
         unsafe {
             let vert_shader = context
@@ -128,6 +147,7 @@ impl Program {
                 uniforms,
                 uniform_blocks: RwLock::new(HashMap::new()),
                 textures: RwLock::new(HashMap::new()),
+                mode,
             })
         }
     }
@@ -429,8 +449,7 @@ impl Program {
         self.context.set_render_states(render_states);
         self.use_program();
         unsafe {
-            self.context
-                .draw_arrays(crate::context::TRIANGLES, 0, count as i32);
+            self.context.draw_arrays(self.mode, 0, count as i32);
             for location in self.attributes.values() {
                 self.context.disable_vertex_attrib_array(*location);
             }
@@ -459,12 +478,8 @@ impl Program {
         self.context.set_render_states(render_states);
         self.use_program();
         unsafe {
-            self.context.draw_arrays_instanced(
-                crate::context::TRIANGLES,
-                0,
-                count as i32,
-                instance_count as i32,
-            );
+            self.context
+                .draw_arrays_instanced(self.mode, 0, count as i32, instance_count as i32);
             self.context
                 .bind_buffer(crate::context::ELEMENT_ARRAY_BUFFER, None);
             for location in self.attributes.values() {
@@ -519,7 +534,7 @@ impl Program {
         element_buffer.bind();
         unsafe {
             self.context.draw_elements(
-                crate::context::TRIANGLES,
+                self.mode,
                 count as i32,
                 element_buffer.data_type(),
                 first as i32,
@@ -580,7 +595,7 @@ impl Program {
         element_buffer.bind();
         unsafe {
             self.context.draw_elements_instanced(
-                crate::context::TRIANGLES,
+                self.mode,
                 count as i32,
                 element_buffer.data_type(),
                 first as i32,
