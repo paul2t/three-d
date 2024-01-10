@@ -188,6 +188,15 @@ impl Context {
         }
     }
 
+    ///
+    /// Set the line width for this context.
+    ///
+    pub fn set_line_width(&self, line_width: f32) {
+        unsafe {
+            self.line_width(line_width);
+        }
+    }
+
     fn blend_const_from_multiplier(multiplier: BlendMultiplierType) -> u32 {
         match multiplier {
             BlendMultiplierType::Zero => crate::context::ZERO,
@@ -225,6 +234,7 @@ impl Context {
             self.set_depth_test(render_states.depth_test);
         }
         self.set_blend(render_states.blend);
+        self.set_line_width(render_states.line_width);
     }
 
     ///
