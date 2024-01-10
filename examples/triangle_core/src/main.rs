@@ -40,6 +40,7 @@ pub fn main() {
         &context,
         include_str!("triangle.vert"),
         include_str!("triangle.frag"),
+        three_d::context::TRIANGLES,
     )
     .unwrap();
 

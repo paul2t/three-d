@@ -189,6 +189,10 @@ impl Geometry for Mesh {
         )
     }
 
+    fn vertex_type(&self) -> u32 {
+        crate::context::TRIANGLES
+    }
+
     fn id(&self, required_attributes: FragmentAttributes) -> u16 {
         let mut id = 0b1u16 << 15 | 0b1u16 << 4;
         if required_attributes.normal {
