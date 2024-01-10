@@ -93,6 +93,10 @@ pub(crate) fn full_screen_vertex_shader_source() -> &'static str {
     "
 }
 
+pub(crate) fn full_screen_vertex_type() -> u32 {
+    crate::context::TRIANGLES
+}
+
 mod data_type;
 use data_type::DataType;
 fn to_byte_slice<T: DataType>(data: &[T]) -> &[u8] {

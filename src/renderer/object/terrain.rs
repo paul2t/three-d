@@ -348,6 +348,10 @@ impl Geometry for TerrainPatch {
         }
     }
 
+    fn vertex_type(&self) -> u32 {
+        crate::context::TRIANGLES
+    }
+
     fn draw(
         &self,
         camera: &Camera,

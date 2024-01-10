@@ -253,6 +253,10 @@ impl Geometry for WaterPatch {
         include_str!("shaders/water.vert").to_owned()
     }
 
+    fn vertex_type(&self) -> u32 {
+        crate::context::TRIANGLES
+    }
+
     fn id(&self, _required_attributes: FragmentAttributes) -> u16 {
         0b1u16 << 15 | 0b101u16
     }

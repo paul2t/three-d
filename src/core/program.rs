@@ -21,25 +21,9 @@ pub struct Program {
 impl Program {
     ///
     /// Creates a new shader program from the given vertex and fragment glsl shader source.
-    ///
-    pub fn from_source(
-        context: &Context,
-        vertex_shader_source: &str,
-        fragment_shader_source: &str,
-    ) -> Result<Self, CoreError> {
-        Self::from_source_mode(
-            context,
-            vertex_shader_source,
-            fragment_shader_source,
-            crate::context::TRIANGLES,
-        )
-    }
-
-    ///
-    /// Creates a new shader program from the given vertex, fragment glsl shader source and OpenGL mode.
     /// See [crate::context::TRIANGLES] and [crate::context::LINES] for example.
     ///
-    pub fn from_source_mode(
+    pub fn from_source(
         context: &Context,
         vertex_shader_source: &str,
         fragment_shader_source: &str,

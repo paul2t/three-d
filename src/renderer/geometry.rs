@@ -22,6 +22,10 @@ macro_rules! impl_geometry_body {
             self.$inner().vertex_shader_source(required_attributes)
         }
 
+        fn vertex_type(&self) -> u32 {
+            self.$inner().vertex_type()
+        }
+
         fn id(&self, required_attributes: FragmentAttributes) -> u16 {
             self.$inner().id(required_attributes)
         }
@@ -124,6 +128,12 @@ pub trait Geometry {
     fn vertex_shader_source(&self, required_attributes: FragmentAttributes) -> String;
 
     ///
+    /// Returns the type of vertex for this geometry.
+    /// Like [crate::context::TRIANGLES] and [crate::context::LINES] for example.
+    ///
+    fn vertex_type(&self) -> u32;
+
+    ///
     /// Returns a unique ID for each variation of the shader source returned from `Geometry::vertex_shader_source`.
     ///
     /// **Note:** The last bit is reserved to internally implemented geometries, so if implementing the `Geometry` trait
@@ -214,6 +224,10 @@ impl<T: Geometry> Geometry for std::sync::RwLock<T> {
         self.read()
             .unwrap()
             .vertex_shader_source(required_attributes)
+    }
+
+    fn vertex_type(&self) -> u32 {
+        self.read().unwrap().vertex_type()
     }
 
     fn id(&self, required_attributes: FragmentAttributes) -> u16 {
