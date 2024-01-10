@@ -481,7 +481,8 @@ impl TextureCubeMap {
             let program = Program::from_source(
                 context,
                 full_screen_vertex_shader_source(),
-                &fragment_shader_source,
+                fragment_shader_source,
+                full_screen_vertex_type(),
             )
             .expect("Failed compiling shader");
 

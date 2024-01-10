@@ -309,6 +309,10 @@ impl Geometry for InstancedMesh {
         )
     }
 
+    fn vertex_type(&self) -> u32 {
+        crate::context::TRIANGLES
+    }
+
     fn id(&self, required_attributes: FragmentAttributes) -> u16 {
         let instance_buffers = &self
             .instance_buffers

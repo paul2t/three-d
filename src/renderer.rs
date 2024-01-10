@@ -398,6 +398,7 @@ pub fn render_with_material(
             context,
             &geometry.vertex_shader_source(fragment_attributes),
             &material.fragment_shader_source(lights),
+            geometry.vertex_type(),
         )
         .expect("Failed compiling shader")
     });
@@ -435,6 +436,7 @@ pub fn render_with_effect(
             context,
             &geometry.vertex_shader_source(fragment_attributes),
             &effect.fragment_shader_source(lights, color_texture, depth_texture),
+            geometry.vertex_type(),
         )
         .expect("Failed compiling shader")
     });
@@ -467,6 +469,7 @@ pub fn apply_screen_material(
             context,
             full_screen_vertex_shader_source(),
             &material.fragment_shader_source(lights),
+            full_screen_vertex_type(),
         )
         .expect("Failed compiling shader")
     });
@@ -506,6 +509,7 @@ pub fn apply_screen_effect(
             context,
             full_screen_vertex_shader_source(),
             &effect.fragment_shader_source(lights, color_texture, depth_texture),
+            full_screen_vertex_type(),
         )
         .expect("Failed compiling shader")
     });
