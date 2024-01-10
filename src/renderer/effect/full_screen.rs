@@ -92,6 +92,7 @@ impl Effect for ScreenEffect {
             cull: Cull::Back,
             write_mask: self.write_mask,
             blend: self.blend,
+            line_width: 1.0,
         }
     }
 }

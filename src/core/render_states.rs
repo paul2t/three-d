@@ -5,7 +5,7 @@
 ///
 /// A set of render specific states that has to be specified at each render call.
 ///
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone)]
 pub struct RenderStates {
     ///
     /// Defines which channels (red, green, blue, alpha and depth) to write to in a render call.
@@ -31,6 +31,23 @@ pub struct RenderStates {
     /// Defines whether the triangles that are backfacing, frontfacing or both should be skipped in a render call.
     ///
     pub cull: Cull,
+
+    ///
+    /// Defines the width of a line. Default is 1.
+    ///
+    pub line_width: f32,
+}
+
+impl Default for RenderStates {
+    fn default() -> Self {
+        Self {
+            write_mask: Default::default(),
+            depth_test: Default::default(),
+            blend: Default::default(),
+            cull: Default::default(),
+            line_width: 1.0,
+        }
+    }
 }
 
 ///
