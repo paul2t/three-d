@@ -81,6 +81,14 @@ mod line;
 #[doc(inline)]
 pub use line::*;
 
+mod baselines;
+#[doc(inline)]
+pub(crate) use baselines::*;
+
+mod lines;
+#[doc(inline)]
+pub use lines::*;
+
 mod rectangle;
 #[doc(inline)]
 pub use rectangle::*;
