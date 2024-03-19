@@ -26,6 +26,8 @@ impl BaseLines {
         camera: &Camera,
         attributes: FragmentAttributes,
     ) {
+        #[cfg(debug_assertions)]
+        assert!(self.positions.vertex_count() % 2 == 0);
         self.use_attributes(program, attributes);
         if let Some(index_buffer) = &self.indices {
             program.draw_elements(render_states, camera.viewport(), index_buffer)
