@@ -50,6 +50,10 @@ mod water;
 #[doc(inline)]
 pub use water::*;
 
+mod wireframe;
+#[doc(inline)]
+pub use wireframe::*;
+
 mod axes;
 #[doc(inline)]
 pub use axes::*;
