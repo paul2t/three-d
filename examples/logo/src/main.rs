@@ -80,18 +80,11 @@ impl Material for LogoMaterial<'_> {
         include_str!("shader.frag").to_string()
     }
 
-    fn id(&self) -> u16 {
-        0b1u16
+    fn id(&self) -> EffectMaterialId {
+        EffectMaterialId(0b1u16)
     }
 
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            uv: true,
-            ..FragmentAttributes::NONE
-        }
-    }
-
-    fn use_uniforms(&self, program: &Program, _camera: &Camera, _lights: &[&dyn Light]) {
+    fn use_uniforms(&self, program: &Program, _viewer: &dyn Viewer, _lights: &[&dyn Light]) {
         program.use_texture("image", &self.image);
     }
 

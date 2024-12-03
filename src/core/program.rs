@@ -69,16 +69,16 @@ impl Program {
             if !context.get_program_link_status(id) {
                 let log = context.get_shader_info_log(vert_shader);
                 if !log.is_empty() {
-                    Err(CoreError::ShaderCompilation(
-                        "vertex".to_string(),
+                    Err(shader_compilation_error(
+                        "vertex",
                         log,
                         vertex_shader_source,
                     ))?;
                 }
                 let log = context.get_shader_info_log(frag_shader);
                 if !log.is_empty() {
-                    Err(CoreError::ShaderCompilation(
-                        "fragment".to_string(),
+                    Err(shader_compilation_error(
+                        "fragment",
                         log,
                         fragment_shader_source,
                     ))?;
@@ -335,34 +335,34 @@ impl Program {
     /// Will panic if the attribute is not defined in the shader code or not used.
     /// In the latter case the variable is removed by the shader compiler.
     ///
-    pub fn use_vertex_attribute(&self, name: &str, buffer: &VertexBuffer) {
+    pub fn use_vertex_attribute<T: BufferDataType>(&self, name: &str, buffer: &VertexBuffer<T>) {
         if buffer.count() > 0 {
             buffer.bind();
             let loc = self.location(name);
             unsafe {
                 self.context.bind_vertex_array(Some(self.context.vao));
                 self.context.enable_vertex_attrib_array(loc);
-                if !buffer.normalized()
-                    && (buffer.data_type() == crate::context::UNSIGNED_BYTE
-                        || buffer.data_type() == crate::context::BYTE
-                        || buffer.data_type() == crate::context::UNSIGNED_SHORT
-                        || buffer.data_type() == crate::context::SHORT
-                        || buffer.data_type() == crate::context::UNSIGNED_INT
-                        || buffer.data_type() == crate::context::INT)
+                if !T::normalized()
+                    && (T::data_type() == crate::context::UNSIGNED_BYTE
+                        || T::data_type() == crate::context::BYTE
+                        || T::data_type() == crate::context::UNSIGNED_SHORT
+                        || T::data_type() == crate::context::SHORT
+                        || T::data_type() == crate::context::UNSIGNED_INT
+                        || T::data_type() == crate::context::INT)
                 {
                     self.context.vertex_attrib_pointer_i32(
                         loc,
-                        buffer.data_size() as i32,
-                        buffer.data_type(),
+                        T::size() as i32,
+                        T::data_type(),
                         0,
                         0,
                     );
                 } else {
                     self.context.vertex_attrib_pointer_f32(
                         loc,
-                        buffer.data_size() as i32,
-                        buffer.data_type(),
-                        buffer.normalized(),
+                        T::size() as i32,
+                        T::data_type(),
+                        T::normalized(),
                         0,
                         0,
                     );
@@ -383,34 +383,38 @@ impl Program {
     /// Will panic if the attribute is not defined in the shader code or not used.
     /// In the latter case the variable is removed by the shader compiler.
     ///
-    pub fn use_instance_attribute(&self, name: &str, buffer: &InstanceBuffer) {
+    pub fn use_instance_attribute<T: BufferDataType>(
+        &self,
+        name: &str,
+        buffer: &InstanceBuffer<T>,
+    ) {
         if buffer.count() > 0 {
             buffer.bind();
             let loc = self.location(name);
             unsafe {
                 self.context.bind_vertex_array(Some(self.context.vao));
                 self.context.enable_vertex_attrib_array(loc);
-                if !buffer.normalized()
-                    && (buffer.data_type() == crate::context::UNSIGNED_BYTE
-                        || buffer.data_type() == crate::context::BYTE
-                        || buffer.data_type() == crate::context::UNSIGNED_SHORT
-                        || buffer.data_type() == crate::context::SHORT
-                        || buffer.data_type() == crate::context::UNSIGNED_INT
-                        || buffer.data_type() == crate::context::INT)
+                if !T::normalized()
+                    && (T::data_type() == crate::context::UNSIGNED_BYTE
+                        || T::data_type() == crate::context::BYTE
+                        || T::data_type() == crate::context::UNSIGNED_SHORT
+                        || T::data_type() == crate::context::SHORT
+                        || T::data_type() == crate::context::UNSIGNED_INT
+                        || T::data_type() == crate::context::INT)
                 {
                     self.context.vertex_attrib_pointer_i32(
                         loc,
-                        buffer.data_size() as i32,
-                        buffer.data_type(),
+                        T::size() as i32,
+                        T::data_type(),
                         0,
                         0,
                     );
                 } else {
                     self.context.vertex_attrib_pointer_f32(
                         loc,
-                        buffer.data_size() as i32,
-                        buffer.data_type(),
-                        buffer.normalized(),
+                        T::size() as i32,
+                        T::data_type(),
+                        T::normalized(),
                         0,
                         0,
                     );
@@ -484,11 +488,11 @@ impl Program {
     /// Requires that all attributes and uniforms have been defined using the use_attribute and use_uniform methods.
     /// If you do not want to use an [ElementBuffer], see [Program::draw_arrays]. If you only want to draw a subset of the triangles in the given [ElementBuffer], see [Program::draw_subset_of_elements].
     ///
-    pub fn draw_elements(
+    pub fn draw_elements<T: ElementBufferDataType>(
         &self,
         render_states: RenderStates,
         viewport: Viewport,
-        element_buffer: &ElementBuffer,
+        element_buffer: &ElementBuffer<T>,
     ) {
         self.draw_subset_of_elements(
             render_states,
@@ -504,11 +508,11 @@ impl Program {
     /// Requires that all attributes and uniforms have been defined using the use_attribute and use_uniform methods.
     /// If you do not want to use an [ElementBuffer], see [Program::draw_arrays].
     ///
-    pub fn draw_subset_of_elements(
+    pub fn draw_subset_of_elements<T: ElementBufferDataType>(
         &self,
         render_states: RenderStates,
         viewport: Viewport,
-        element_buffer: &ElementBuffer,
+        element_buffer: &ElementBuffer<T>,
         first: u32,
         count: u32,
     ) {
@@ -520,7 +524,7 @@ impl Program {
             self.context.draw_elements(
                 self.mode,
                 count as i32,
-                element_buffer.data_type(),
+                T::data_type(),
                 first as i32,
             );
             self.context
@@ -543,11 +547,11 @@ impl Program {
     /// Same as [Program::draw_elements] except it renders 'instance_count' instances of the same set of triangles.
     /// Use the [Program::use_instance_attribute] method to send unique data for each instance to the shader.
     ///
-    pub fn draw_elements_instanced(
+    pub fn draw_elements_instanced<T: ElementBufferDataType>(
         &self,
         render_states: RenderStates,
         viewport: Viewport,
-        element_buffer: &ElementBuffer,
+        element_buffer: &ElementBuffer<T>,
         instance_count: u32,
     ) {
         self.draw_subset_of_elements_instanced(
@@ -564,11 +568,11 @@ impl Program {
     /// Same as [Program::draw_subset_of_elements] except it renders 'instance_count' instances of the same set of triangles.
     /// Use the [Program::use_instance_attribute] method to send unique data for each instance to the shader.
     ///
-    pub fn draw_subset_of_elements_instanced(
+    pub fn draw_subset_of_elements_instanced<T: ElementBufferDataType>(
         &self,
         render_states: RenderStates,
         viewport: Viewport,
-        element_buffer: &ElementBuffer,
+        element_buffer: &ElementBuffer<T>,
         first: u32,
         count: u32,
         instance_count: u32,
@@ -581,7 +585,7 @@ impl Program {
             self.context.draw_elements_instanced(
                 self.mode,
                 count as i32,
-                element_buffer.data_type(),
+                T::data_type(),
                 first as i32,
                 instance_count as i32,
             );
@@ -643,4 +647,12 @@ impl Drop for Program {
             self.context.delete_program(self.id);
         }
     }
+}
+fn shader_compilation_error(typ: &str, log: String, source: String) -> CoreError {
+    let lines: Vec<String> = source
+        .lines()
+        .enumerate()
+        .map(|(index, l)| format!("{:0>3}: {}", index + 1, l))
+        .collect();
+    CoreError::ShaderCompilation(typ.to_string(), lines.join("\n"), log)
 }

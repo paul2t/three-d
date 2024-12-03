@@ -30,8 +30,8 @@ impl SpotLight {
         context: &Context,
         intensity: f32,
         color: Srgba,
-        position: &Vec3,
-        direction: &Vec3,
+        position: Vec3,
+        direction: Vec3,
         cutoff: impl Into<Radians>,
         attenuation: Attenuation,
     ) -> SpotLight {
@@ -40,8 +40,8 @@ impl SpotLight {
             shadow_texture: None,
             intensity,
             color,
-            position: *position,
-            direction: *direction,
+            position,
+            direction,
             cutoff: cutoff.into(),
             attenuation,
             shadow_matrix: Mat4::identity(),
@@ -68,7 +68,7 @@ impl SpotLight {
         geometries: impl IntoIterator<Item = impl Geometry> + Clone,
     ) {
         let position = self.position;
-        let direction = self.direction;
+        let target = position + self.direction.normalize();
         let up = compute_up_direction(self.direction);
 
         let viewport = Viewport::new_at_origo(texture_size, texture_size);
@@ -78,15 +78,15 @@ impl SpotLight {
         for geometry in geometries.clone() {
             let aabb = geometry.aabb();
             if !aabb.is_empty() {
-                z_far = z_far.max(aabb.distance_max(&self.position));
-                z_near = z_near.min(aabb.distance(&self.position));
+                z_far = z_far.max(aabb.distance_max(self.position));
+                z_near = z_near.min(aabb.distance(self.position));
             }
         }
 
         let shadow_camera = Camera::new_perspective(
             viewport,
             position,
-            position + direction,
+            target,
             up,
             self.cutoff,
             z_near.max(0.01),
@@ -108,13 +108,14 @@ impl SpotLight {
             },
             ..Default::default()
         };
+        let frustum = shadow_camera.frustum();
         shadow_texture
             .as_depth_target()
             .clear(ClearState::default())
             .write::<RendererError>(|| {
                 for geometry in geometries
                     .into_iter()
-                    .filter(|g| shadow_camera.in_frustum(&g.aabb()))
+                    .filter(|g| frustum.contains(g.aabb()))
                 {
                     render_with_material(
                         &self.context,
@@ -222,7 +223,7 @@ impl Light for SpotLight {
         program.use_uniform(&format!("cutoff{}", i), self.cutoff.0);
     }
 
-    fn id(&self) -> u8 {
-        LightId::SpotLight(self.shadow_texture.is_some()).0
+    fn id(&self) -> LightId {
+        LightId::SpotLight(self.shadow_texture.is_some())
     }
 }

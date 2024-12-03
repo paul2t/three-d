@@ -155,7 +155,7 @@ impl DeferredPhysicalMaterial {
     ///
     pub fn lighting_pass(
         context: &Context,
-        camera: &Camera,
+        viewer: &dyn Viewer,
         geometry_pass_color_texture: ColorTexture,
         geometry_pass_depth_texture: DepthTexture,
         lights: &[&dyn Light],
@@ -163,7 +163,7 @@ impl DeferredPhysicalMaterial {
         apply_screen_effect(
             context,
             lighting_pass::LightingPassEffect {},
-            camera,
+            viewer,
             lights,
             Some(geometry_pass_color_texture),
             Some(geometry_pass_depth_texture),
@@ -178,7 +178,7 @@ impl FromCpuMaterial for DeferredPhysicalMaterial {
 }
 
 impl Material for DeferredPhysicalMaterial {
-    fn id(&self) -> u16 {
+    fn id(&self) -> EffectMaterialId {
         EffectMaterialId::DeferredPhysicalMaterial(
             self.albedo_texture.is_some(),
             self.metallic_roughness_texture.is_some(),
@@ -187,7 +187,6 @@ impl Material for DeferredPhysicalMaterial {
             self.emissive_texture.is_some(),
             self.alpha_cutout.is_some(),
         )
-        .0
     }
 
     fn fragment_shader_source(&self, _lights: &[&dyn Light]) -> String {
@@ -229,22 +228,7 @@ impl Material for DeferredPhysicalMaterial {
         output
     }
 
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            position: true,
-            normal: true,
-            color: true,
-            uv: self.albedo_texture.is_some()
-                || self.metallic_roughness_texture.is_some()
-                || self.normal_texture.is_some()
-                || self.occlusion_texture.is_some()
-                || self.emissive_texture.is_some()
-                || self.alpha_cutout.is_some(),
-            tangents: self.normal_texture.is_some(),
-        }
-    }
-
-    fn use_uniforms(&self, program: &Program, _camera: &Camera, _lights: &[&dyn Light]) {
+    fn use_uniforms(&self, program: &Program, _viewer: &dyn Viewer, _lights: &[&dyn Light]) {
         program.use_uniform("metallic", self.metallic);
         program.use_uniform("roughness", self.roughness);
         program.use_uniform("albedo", self.albedo.to_linear_srgb());

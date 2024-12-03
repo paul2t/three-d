@@ -1,10 +1,4 @@
-mod tone_mapping;
-pub use tone_mapping::*;
-
-mod color_space;
-pub use color_space::*;
-
-use crate::core::*;
+use crate::*;
 
 ///
 /// Represents a camera used for viewing 2D and 3D objects.
@@ -16,6 +10,40 @@ pub struct Camera {
     pub tone_mapping: ToneMapping,
     /// This color mapping is applied to the final color of renders using this camera.
     pub color_mapping: ColorMapping,
+}
+
+impl Viewer for Camera {
+    fn position(&self) -> Vec3 {
+        self.camera.position()
+    }
+
+    fn view(&self) -> Mat4 {
+        self.camera.view()
+    }
+
+    fn projection(&self) -> Mat4 {
+        self.camera.projection()
+    }
+
+    fn viewport(&self) -> Viewport {
+        self.camera.viewport()
+    }
+
+    fn z_near(&self) -> f32 {
+        self.camera.z_near()
+    }
+
+    fn z_far(&self) -> f32 {
+        self.camera.z_far()
+    }
+
+    fn color_mapping(&self) -> ColorMapping {
+        self.color_mapping
+    }
+
+    fn tone_mapping(&self) -> ToneMapping {
+        self.tone_mapping
+    }
 }
 
 impl Camera {
@@ -110,8 +138,7 @@ impl Camera {
     }
 }
 
-use std::ops::Deref;
-impl Deref for Camera {
+impl std::ops::Deref for Camera {
     type Target = three_d_asset::Camera;
     fn deref(&self) -> &Self::Target {
         &self.camera

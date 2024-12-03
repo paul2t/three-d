@@ -13,14 +13,7 @@ impl Material for FireworksMaterial {
     fn fragment_shader_source(&self, _lights: &[&dyn Light]) -> String {
         include_str!("particles.frag").to_string()
     }
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            uv: true,
-            color: true,
-            ..FragmentAttributes::NONE
-        }
-    }
-    fn use_uniforms(&self, program: &Program, _camera: &Camera, _lights: &[&dyn Light]) {
+    fn use_uniforms(&self, program: &Program, _viewer: &dyn Viewer, _lights: &[&dyn Light]) {
         program.use_uniform("color", self.color.to_linear_srgb());
         program.use_uniform("fade", self.fade);
     }
@@ -44,8 +37,8 @@ impl Material for FireworksMaterial {
         MaterialType::Transparent
     }
 
-    fn id(&self) -> u16 {
-        0b1u16
+    fn id(&self) -> EffectMaterialId {
+        EffectMaterialId(0b1u16)
     }
 }
 // Entry point for non-wasm
@@ -56,7 +49,7 @@ fn main() {
 
 pub fn run() {
     let window = Window::new(WindowSettings {
-        title: "Fireworks!".to_string(),
+        title: "Particles!".to_string(),
         max_size: Some((1280, 720)),
         ..Default::default()
     })
@@ -89,7 +82,7 @@ pub fn run() {
         Srgba::new_opaque(40, 178, 222),
     ];
     let mut square = CpuMesh::square();
-    square.transform(&Mat4::from_scale(0.6)).unwrap();
+    square.transform(Mat4::from_scale(0.6)).unwrap();
 
     // A particle system is created with an acceleration of -9.82 in the y direction to simulate gravity.
     let particles = ParticleSystem::new(

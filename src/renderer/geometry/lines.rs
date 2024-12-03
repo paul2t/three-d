@@ -69,7 +69,7 @@ impl<'a> IntoIterator for &'a Lines {
 impl Geometry for Lines {
     fn aabb(&self) -> AxisAlignedBoundingBox {
         let mut aabb = self.aabb;
-        aabb.transform(&self.current_transformation);
+        aabb.transform(self.current_transformation);
         aabb
     }
 
@@ -79,73 +79,45 @@ impl Geometry for Lines {
         }
     }
 
-    fn draw(
-        &self,
-        camera: &Camera,
-        program: &Program,
-        render_states: RenderStates,
-        attributes: FragmentAttributes,
-    ) {
-        program.use_uniform("viewProjection", camera.projection() * camera.view());
+    fn draw(&self, viewer: &dyn Viewer, program: &Program, render_states: RenderStates) {
+        program.use_uniform("viewProjection", viewer.projection() * viewer.view());
         program.use_uniform("modelMatrix", self.current_transformation);
 
-        self.base_line
-            .draw(program, render_states, camera, attributes);
+        self.base_line.draw(program, render_states, viewer);
     }
 
-    fn vertex_shader_source(&self, required_attributes: FragmentAttributes) -> String {
-        format!(
-            "{}{}",
-            if required_attributes.color && self.base_line.colors.is_some() {
-                "#define USE_VERTEX_COLORS\n"
-            } else {
-                ""
-            },
-            include_str!("shaders/lines.vert"),
-        )
+    fn vertex_shader_source(&self) -> String {
+        self.base_line.vertex_shader_source()
     }
 
     fn vertex_type(&self) -> u32 {
         crate::context::LINES
     }
 
-    fn id(&self, required_attributes: FragmentAttributes) -> u16 {
-        let mut id = 0b1u16 << 15 | 0b1u16 << 8;
-        if required_attributes.normal {
-            id |= 0b1u16;
-        }
-        if required_attributes.tangents {
-            id |= 0b1u16 << 1;
-        }
-        if required_attributes.uv {
-            id |= 0b1u16 << 2;
-        }
-        if required_attributes.color && self.base_line.colors.is_some() {
-            id |= 0b1u16 << 3;
-        }
-        id
+    fn id(&self) -> GeometryId {
+        GeometryId::Lines(self.base_line.colors.is_some())
     }
 
     fn render_with_material(
         &self,
         material: &dyn Material,
-        camera: &Camera,
+        viewer: &dyn Viewer,
         lights: &[&dyn Light],
     ) {
-        render_with_material(&self.context, camera, &self, material, lights);
+        render_with_material(&self.context, viewer, &self, material, lights);
     }
 
     fn render_with_effect(
         &self,
         material: &dyn Effect,
-        camera: &Camera,
+        viewer: &dyn Viewer,
         lights: &[&dyn Light],
         color_texture: Option<ColorTexture>,
         depth_texture: Option<DepthTexture>,
     ) {
         render_with_effect(
             &self.context,
-            camera,
+            viewer,
             self,
             material,
             lights,

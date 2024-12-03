@@ -36,7 +36,7 @@ pub async fn run() {
         0.1,
         30.0,
     );
-    let mut control = OrbitControl::new(*camera.target(), 1.0, 100.0);
+    let mut control = OrbitControl::new(camera.target(), 1.0, 100.0);
     let mut gui = three_d::GUI::new(&context);
 
     // Source: https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0
@@ -60,9 +60,9 @@ pub async fn run() {
     let mut cpu_plane = CpuMesh::square();
     cpu_plane
         .transform(
-            &(Mat4::from_translation(vec3(0.0, -1.0, 0.0))
+            Mat4::from_translation(vec3(0.0, -1.0, 0.0))
                 * Mat4::from_scale(10.0)
-                * Mat4::from_angle_x(degrees(-90.0))),
+                * Mat4::from_angle_x(degrees(-90.0)),
         )
         .unwrap();
     let mut plane = Gm::new(
@@ -81,15 +81,14 @@ pub async fn run() {
     );
 
     let mut ambient = AmbientLight::new(&context, 0.2, Srgba::WHITE);
-    let mut directional0 = DirectionalLight::new(&context, 1.0, Srgba::RED, &vec3(0.0, -1.0, 0.0));
-    let mut directional1 =
-        DirectionalLight::new(&context, 1.0, Srgba::GREEN, &vec3(0.0, -1.0, 0.0));
+    let mut directional0 = DirectionalLight::new(&context, 1.0, Srgba::RED, vec3(0.0, -1.0, 0.0));
+    let mut directional1 = DirectionalLight::new(&context, 1.0, Srgba::GREEN, vec3(0.0, -1.0, 0.0));
     let mut spot0 = SpotLight::new(
         &context,
-        2.0,
+        5.0,
         Srgba::BLUE,
-        &vec3(0.0, 0.0, 0.0),
-        &vec3(0.0, -1.0, 0.0),
+        vec3(0.0, 0.0, 0.0),
+        vec3(0.0, -1.0, 0.0),
         degrees(25.0),
         Attenuation {
             constant: 0.1,
@@ -101,7 +100,7 @@ pub async fn run() {
         &context,
         1.0,
         Srgba::GREEN,
-        &vec3(0.0, 0.0, 0.0),
+        vec3(0.0, 0.0, 0.0),
         Attenuation {
             constant: 0.5,
             linear: 0.05,
@@ -112,7 +111,7 @@ pub async fn run() {
         &context,
         1.0,
         Srgba::RED,
-        &vec3(0.0, 0.0, 0.0),
+        vec3(0.0, 0.0, 0.0),
         Attenuation {
             constant: 0.5,
             linear: 0.05,
@@ -122,7 +121,6 @@ pub async fn run() {
 
     // main loop
     let mut shadows_enabled = true;
-    let mut lighting_model = LightingModel::Blinn;
     let mut material_type = MaterialType::Forward;
 
     window.render_loop(move |mut frame_input| {
@@ -166,7 +164,7 @@ pub async fn run() {
                         Slider::new(&mut directional1.intensity, 0.0..=1.0)
                             .text("Directional 1 intensity"),
                     );
-                    ui.add(Slider::new(&mut spot0.intensity, 0.0..=1.0).text("Spot intensity"));
+                    ui.add(Slider::new(&mut spot0.intensity, 0.0..=10.0).text("Spot intensity"));
                     ui.add(Slider::new(&mut point0.intensity, 0.0..=1.0).text("Point 0 intensity"));
                     ui.add(Slider::new(&mut point1.intensity, 0.0..=1.0).text("Point 1 intensity"));
                     if ui.checkbox(&mut shadows_enabled, "Shadows").clicked() {
@@ -178,10 +176,18 @@ pub async fn run() {
                     }
 
                     ui.label("Lighting model");
-                    ui.radio_value(&mut lighting_model, LightingModel::Phong, "Phong");
-                    ui.radio_value(&mut lighting_model, LightingModel::Blinn, "Blinn");
                     ui.radio_value(
-                        &mut lighting_model,
+                        &mut model.material.lighting_model,
+                        LightingModel::Phong,
+                        "Phong",
+                    );
+                    ui.radio_value(
+                        &mut model.material.lighting_model,
+                        LightingModel::Blinn,
+                        "Blinn",
+                    );
+                    ui.radio_value(
+                        &mut model.material.lighting_model,
                         LightingModel::Cook(
                             NormalDistributionFunction::Blinn,
                             GeometryFunction::SmithSchlickGGX,
@@ -189,7 +195,7 @@ pub async fn run() {
                         "Cook (Blinn)",
                     );
                     ui.radio_value(
-                        &mut lighting_model,
+                        &mut model.material.lighting_model,
                         LightingModel::Cook(
                             NormalDistributionFunction::Beckmann,
                             GeometryFunction::SmithSchlickGGX,
@@ -197,7 +203,7 @@ pub async fn run() {
                         "Cook (Beckmann)",
                     );
                     ui.radio_value(
-                        &mut lighting_model,
+                        &mut model.material.lighting_model,
                         LightingModel::Cook(
                             NormalDistributionFunction::TrowbridgeReitzGGX,
                             GeometryFunction::SmithSchlickGGX,
@@ -244,8 +250,6 @@ pub async fn run() {
         spot0.direction = -vec3(3.0 + c, 5.0 + s, 3.0 - s);
         point0.position = vec3(-5.0 * c, 5.0, -5.0 * s);
         point1.position = vec3(5.0 * c, 5.0, 5.0 * s);
-
-        model.material.lighting_model = lighting_model;
 
         // Draw
         if shadows_enabled {

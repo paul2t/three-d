@@ -7,8 +7,8 @@ pub struct SkyboxMaterial {
 }
 
 impl Material for SkyboxMaterial {
-    fn id(&self) -> u16 {
-        EffectMaterialId::SkyboxMaterial.0
+    fn id(&self) -> EffectMaterialId {
+        EffectMaterialId::SkyboxMaterial
     }
 
     fn fragment_shader_source(&self, _lights: &[&dyn Light]) -> String {
@@ -21,13 +21,9 @@ impl Material for SkyboxMaterial {
         )
     }
 
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes::NONE
-    }
-
-    fn use_uniforms(&self, program: &Program, camera: &Camera, _lights: &[&dyn Light]) {
-        camera.tone_mapping.use_uniforms(program);
-        camera.color_mapping.use_uniforms(program);
+    fn use_uniforms(&self, program: &Program, viewer: &dyn Viewer, _lights: &[&dyn Light]) {
+        viewer.tone_mapping().use_uniforms(program);
+        viewer.color_mapping().use_uniforms(program);
         program.use_texture_cube("texture0", &self.texture);
     }
 

@@ -9,8 +9,8 @@ use crate::texture::{ColorTexture, DepthTexture};
 
 use open_enum::open_enum;
 
-// TODO: Utilizing the open_enum crate, convert all ID usage to these types (breaking change for externally implemented shaders)
-// NOTE: It may be possible to eventually also create a proc macro that automatically allocates IDs based on the width of their subfields
+// TODO: Change macros to only take final name and generate base name once concat_idents (rust-lang/rust#29599) becomes stable
+// NOTE: It may be possible to eventually create a proc macro that automatically allocates ID values based on the width of their subfields
 
 ///
 /// Recursive macro to assemble multiple booleans into a single bitfield (as a variable width int literal)
@@ -88,37 +88,31 @@ macro_rules! enum_effectfield {
 /// ID Space for geometry shaders
 /// IDs 0x0000 through 0x7FFF are reserved for public use
 ///
+#[allow(missing_docs)]
 #[open_enum]
 #[repr(u16)]
-pub(crate) enum GeometryId {
+pub enum GeometryId {
     Screen = 0x8000,
     Skybox = 0x8001,
-    TerrainPatchBase = 0x8002, // To 0x8003
+    TerrainPatch = 0x8002,
     Sprites = 0x8004,
     WaterPatch = 0x8005,
     MeshBase = 0x8010,           // To 0x801F
+    LinesBase = 0x8020,          // To 0x802F
     ParticleSystemBase = 0x8040, // To 0x807F
     InstancedMeshBase = 0x8080,  // To 0x80FF
 }
 
 impl GeometryId {
-    enum_bitfield!(TerrainPatchBase, TerrainPatch(normal_tangent));
     enum_bitfield!(MeshBase, Mesh(normal, tangents, uv, color));
+    enum_bitfield!(LinesBase, Lines(color));
     enum_bitfield!(
         ParticleSystemBase,
         ParticleSystem(normal, tangents, uv, color, instance_color, instance_uv)
     );
     enum_bitfield!(
         InstancedMeshBase,
-        InstancedMesh(
-            normal,
-            tangents,
-            uv,
-            color,
-            instance_color,
-            instance_transformation,
-            instance_uv,
-        )
+        InstancedMesh(normal, tangents, uv, color, instance_color, instance_uv)
     );
 }
 
@@ -126,9 +120,10 @@ impl GeometryId {
 /// ID Space for effect and material shaders
 /// IDs 0x0000 through 0x4FFF are reserved for public use
 ///
+#[allow(missing_docs)]
 #[open_enum]
 #[repr(u16)]
-pub(crate) enum EffectMaterialId {
+pub enum EffectMaterialId {
     LightingPassEffectBase = 0x5000, // To 0x503F
     WaterEffectBase = 0x5800,        // To 0x583F
     CopyEffectBase = 0x6000,         // To 0x603F
@@ -142,6 +137,7 @@ pub(crate) enum EffectMaterialId {
     SkyboxMaterial = 0x8004,
     UVMaterial = 0x8005,
     NormalMaterialBase = 0x8006, // To 0x8007
+    IntersectionMaterial = 0x800B,
     IsosurfaceMaterial = 0x800C,
     ImpostersMaterial = 0x800D,
     BrdfMaterial = 0x800E,
@@ -193,9 +189,10 @@ impl EffectMaterialId {
 /// ID space for lighting shaders
 /// IDs 0x00 through 0x7F are reserved for public use
 ///
+#[allow(missing_docs)]
 #[open_enum]
 #[repr(u8)]
-pub(crate) enum LightId {
+pub enum LightId {
     AmbientLightBase = 0x80,     // To 0x81
     DirectionalLightBase = 0x82, // To 0x83
     PointLight = 0x84,

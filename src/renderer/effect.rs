@@ -18,24 +18,20 @@ macro_rules! impl_effect_body {
             &self,
             color_texture: Option<ColorTexture>,
             depth_texture: Option<DepthTexture>,
-        ) -> u16 {
+        ) -> EffectMaterialId {
             self.$inner().id(color_texture, depth_texture)
-        }
-
-        fn fragment_attributes(&self) -> FragmentAttributes {
-            self.$inner().fragment_attributes()
         }
 
         fn use_uniforms(
             &self,
             program: &Program,
-            camera: &Camera,
+            viewer: &dyn Viewer,
             lights: &[&dyn Light],
             color_texture: Option<ColorTexture>,
             depth_texture: Option<DepthTexture>,
         ) {
             self.$inner()
-                .use_uniforms(program, camera, lights, color_texture, depth_texture)
+                .use_uniforms(program, viewer, lights, color_texture, depth_texture)
         }
 
         fn render_states(&self) -> RenderStates {
@@ -88,15 +84,13 @@ pub trait Effect {
     /// Returns a unique ID for each variation of the shader source returned from [Effect::fragment_shader_source].
     ///
     /// **Note:** The first 16 bits are reserved to internally implemented effects, so if implementing the [Effect] trait
-    /// outside of this crate, always return an id that is larger than or equal to `0b1u16 << 16`.
+    /// outside of this crate, always return an id in the public use range as defined by [EffectMaterialId].
     ///
-    fn id(&self, color_texture: Option<ColorTexture>, depth_texture: Option<DepthTexture>) -> u16;
-
-    ///
-    /// Returns a [FragmentAttributes] struct that describes which fragment attributes,
-    /// ie. the input from the vertex shader, are required for rendering with this effect.
-    ///
-    fn fragment_attributes(&self) -> FragmentAttributes;
+    fn id(
+        &self,
+        color_texture: Option<ColorTexture>,
+        depth_texture: Option<DepthTexture>,
+    ) -> EffectMaterialId;
 
     ///
     /// Sends the uniform data needed for this effect to the fragment shader.
@@ -104,7 +98,7 @@ pub trait Effect {
     fn use_uniforms(
         &self,
         program: &Program,
-        camera: &Camera,
+        viewer: &dyn Viewer,
         lights: &[&dyn Light],
         color_texture: Option<ColorTexture>,
         depth_texture: Option<DepthTexture>,
@@ -152,25 +146,25 @@ impl<T: Effect> Effect for std::sync::RwLock<T> {
             .fragment_shader_source(lights, color_texture, depth_texture)
     }
 
-    fn id(&self, color_texture: Option<ColorTexture>, depth_texture: Option<DepthTexture>) -> u16 {
+    fn id(
+        &self,
+        color_texture: Option<ColorTexture>,
+        depth_texture: Option<DepthTexture>,
+    ) -> EffectMaterialId {
         self.read().unwrap().id(color_texture, depth_texture)
-    }
-
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        self.read().unwrap().fragment_attributes()
     }
 
     fn use_uniforms(
         &self,
         program: &Program,
-        camera: &Camera,
+        viewer: &dyn Viewer,
         lights: &[&dyn Light],
         color_texture: Option<ColorTexture>,
         depth_texture: Option<DepthTexture>,
     ) {
         self.read()
             .unwrap()
-            .use_uniforms(program, camera, lights, color_texture, depth_texture)
+            .use_uniforms(program, viewer, lights, color_texture, depth_texture)
     }
 
     fn render_states(&self) -> RenderStates {

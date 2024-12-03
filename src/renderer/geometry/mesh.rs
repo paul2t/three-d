@@ -85,34 +85,52 @@ impl Mesh {
         self.base_mesh.positions.vertex_count()
     }
 
-    /// Updates the vertex positions of the mesh.
     ///
-    /// # Panics
+    /// Used for editing the triangle indices.
+    /// Note: Changing this will possibly ruin the mesh.
     ///
-    /// Panics if the number of positions does not match the number of vertices in the mesh.
-    pub fn update_positions(&mut self, positions: &[Vector3<f32>]) {
-        if positions.len() as u32 != self.vertex_count() {
-            panic!("Failed updating positions: The number of positions {} does not match the number of vertices {} in the mesh.", positions.len(), self.vertex_count())
-        }
-        self.base_mesh.positions.fill(positions);
+    pub fn indices_mut(&mut self) -> &mut IndexBuffer {
+        &mut self.base_mesh.indices
     }
 
     ///
-    /// Updates the vertex normals of the mesh.
+    /// Used for editing the vertex positions.
+    /// Note: Changing this will possibly ruin the mesh.
     ///
-    /// # Panics
-    ///
-    /// Panics if the number of normals does not match the number of vertices in the mesh.
-    pub fn update_normals(&mut self, normals: &[Vector3<f32>]) {
-        if normals.len() as u32 != self.vertex_count() {
-            panic!("Failed updating normals: The number of normals {} does not match the number of vertices {} in the mesh.", normals.len(), self.vertex_count())
-        }
+    pub fn positions_mut(&mut self) -> &mut VertexBuffer<Vec3> {
+        &mut self.base_mesh.positions
+    }
 
-        if let Some(normal_buffer) = &mut self.base_mesh.normals {
-            normal_buffer.fill(normals);
-        } else {
-            self.base_mesh.normals = Some(VertexBuffer::new_with_data(&self.context, normals));
-        }
+    ///
+    /// Used for editing the vertex normals.
+    /// Note: Changing this will possibly ruin the mesh.
+    ///
+    pub fn normals_mut(&mut self) -> &mut Option<VertexBuffer<Vec3>> {
+        &mut self.base_mesh.normals
+    }
+
+    ///
+    /// Used for editing the vertex uvs.
+    /// Note: Changing this will possibly ruin the mesh.
+    ///
+    pub fn uvs_mut(&mut self) -> &mut Option<VertexBuffer<Vec2>> {
+        &mut self.base_mesh.uvs
+    }
+
+    ///
+    /// Used for editing the vertex tangents.
+    /// Note: Changing this will possibly ruin the mesh.
+    ///
+    pub fn tangents_mut(&mut self) -> &mut Option<VertexBuffer<Vec4>> {
+        &mut self.base_mesh.tangents
+    }
+
+    ///
+    /// Used for editing the vertex colors.
+    /// Note: Changing this will possibly ruin the mesh.
+    ///
+    pub fn colors_mut(&mut self) -> &mut Option<VertexBuffer<Vec4>> {
+        &mut self.base_mesh.colors
     }
 }
 
@@ -127,9 +145,7 @@ impl<'a> IntoIterator for &'a Mesh {
 
 impl Geometry for Mesh {
     fn aabb(&self) -> AxisAlignedBoundingBox {
-        let mut aabb = self.aabb;
-        aabb.transform(&self.current_transformation);
-        aabb
+        self.aabb.transformed(self.current_transformation)
     }
 
     fn animate(&mut self, time: f32) {
@@ -138,91 +154,57 @@ impl Geometry for Mesh {
         }
     }
 
-    fn draw(
-        &self,
-        camera: &Camera,
-        program: &Program,
-        render_states: RenderStates,
-        attributes: FragmentAttributes,
-    ) {
-        if attributes.normal {
-            if let Some(inverse) = self.current_transformation.invert() {
-                program.use_uniform_if_required("normalMatrix", inverse.transpose());
-            } else {
-                // determinant is float zero
-                return;
-            }
+    fn draw(&self, viewer: &dyn Viewer, program: &Program, render_states: RenderStates) {
+        if let Some(inverse) = self.current_transformation.invert() {
+            program.use_uniform_if_required("normalMatrix", inverse.transpose());
+        } else {
+            // determinant is float zero
+            return;
         }
 
-        program.use_uniform("viewProjection", camera.projection() * camera.view());
+        program.use_uniform("viewProjection", viewer.projection() * viewer.view());
         program.use_uniform("modelMatrix", self.current_transformation);
 
-        self.base_mesh
-            .draw(program, render_states, camera, attributes);
+        self.base_mesh.draw(program, render_states, viewer);
     }
 
-    fn vertex_shader_source(&self, required_attributes: FragmentAttributes) -> String {
-        format!(
-            "{}{}{}{}{}{}",
-            if required_attributes.normal {
-                "#define USE_NORMALS\n"
-            } else {
-                ""
-            },
-            if required_attributes.tangents {
-                "#define USE_TANGENTS\n"
-            } else {
-                ""
-            },
-            if required_attributes.uv {
-                "#define USE_UVS\n"
-            } else {
-                ""
-            },
-            if required_attributes.color && self.base_mesh.colors.is_some() {
-                "#define USE_VERTEX_COLORS\n"
-            } else {
-                ""
-            },
-            include_str!("../../core/shared.frag"),
-            include_str!("shaders/mesh.vert"),
-        )
+    fn vertex_shader_source(&self) -> String {
+        self.base_mesh.vertex_shader_source()
     }
 
     fn vertex_type(&self) -> u32 {
         crate::context::TRIANGLES
     }
 
-    fn id(&self, required_attributes: FragmentAttributes) -> u16 {
+    fn id(&self) -> GeometryId {
         GeometryId::Mesh(
-            required_attributes.normal,
-            required_attributes.tangents,
-            required_attributes.uv,
-            required_attributes.color,
+            self.base_mesh.normals.is_some(),
+            self.base_mesh.tangents.is_some(),
+            self.base_mesh.uvs.is_some(),
+            self.base_mesh.colors.is_some(),
         )
-        .0
     }
 
     fn render_with_material(
         &self,
         material: &dyn Material,
-        camera: &Camera,
+        viewer: &dyn Viewer,
         lights: &[&dyn Light],
     ) {
-        render_with_material(&self.context, camera, &self, material, lights);
+        render_with_material(&self.context, viewer, &self, material, lights);
     }
 
     fn render_with_effect(
         &self,
         material: &dyn Effect,
-        camera: &Camera,
+        viewer: &dyn Viewer,
         lights: &[&dyn Light],
         color_texture: Option<ColorTexture>,
         depth_texture: Option<DepthTexture>,
     ) {
         render_with_effect(
             &self.context,
-            camera,
+            viewer,
             self,
             material,
             lights,

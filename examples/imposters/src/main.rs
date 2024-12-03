@@ -9,7 +9,7 @@ use three_d::*;
 
 pub async fn run() {
     let window = Window::new(WindowSettings {
-        title: "Forest!".to_string(),
+        title: "Imposters!".to_string(),
         max_size: Some((1280, 720)),
         ..Default::default()
     })
@@ -51,12 +51,12 @@ pub async fn run() {
 
     // Lights
     let ambient = AmbientLight::new(&context, 0.3, Srgba::WHITE);
-    let directional = DirectionalLight::new(&context, 4.0, Srgba::WHITE, &vec3(-1.0, -1.0, -1.0));
+    let directional = DirectionalLight::new(&context, 4.0, Srgba::WHITE, vec3(-1.0, -1.0, -1.0));
 
     // Imposters
     let mut aabb = AxisAlignedBoundingBox::EMPTY;
     model.iter().for_each(|m| {
-        aabb.expand_with_aabb(&m.aabb());
+        aabb.expand_with_aabb(m.aabb());
     });
     let size = aabb.size();
     let t = 100;

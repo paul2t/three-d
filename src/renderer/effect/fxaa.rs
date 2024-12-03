@@ -23,24 +23,20 @@ impl Effect for FxaaEffect {
         )
     }
 
-    fn id(&self, color_texture: Option<ColorTexture>, _depth_texture: Option<DepthTexture>) -> u16 {
+    fn id(
+        &self,
+        color_texture: Option<ColorTexture>,
+        _depth_texture: Option<DepthTexture>,
+    ) -> EffectMaterialId {
         EffectMaterialId::FxaaEffect(
             color_texture.expect("Must supply a color texture to apply a fxaa effect"),
         )
-        .0
-    }
-
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            uv: true,
-            ..FragmentAttributes::NONE
-        }
     }
 
     fn use_uniforms(
         &self,
         program: &Program,
-        _camera: &Camera,
+        _viewer: &dyn Viewer,
         _lights: &[&dyn Light],
         color_texture: Option<ColorTexture>,
         _depth_texture: Option<DepthTexture>,

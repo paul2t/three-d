@@ -47,7 +47,7 @@ impl Environment {
             irradiance_size,
             Interpolation::Linear,
             Interpolation::Linear,
-            Some(Interpolation::Linear),
+            Some(Mipmap::default()),
             Wrapping::ClampToEdge,
             Wrapping::ClampToEdge,
             Wrapping::ClampToEdge,
@@ -77,7 +77,7 @@ impl Environment {
             prefilter_size,
             Interpolation::Linear,
             Interpolation::Linear,
-            Some(Interpolation::Linear),
+            Some(Mipmap::default()),
             Wrapping::ClampToEdge,
             Wrapping::ClampToEdge,
             Wrapping::ClampToEdge,
@@ -147,26 +147,19 @@ struct PrefilterMaterial<'a> {
 impl Material for PrefilterMaterial<'_> {
     fn fragment_shader_source(&self, _lights: &[&dyn Light]) -> String {
         format!(
-            "{}{}{}{}",
-            super::lighting_model_shader(self.lighting_model),
+            "{}{}{}",
             include_str!("../../core/shared.frag"),
             include_str!("shaders/light_shared.frag"),
             include_str!("shaders/prefilter.frag")
         )
     }
 
-    fn id(&self) -> u16 {
-        EffectMaterialId::PrefilterMaterial.0
+    fn id(&self) -> EffectMaterialId {
+        EffectMaterialId::PrefilterMaterial
     }
 
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            uv: true,
-            ..FragmentAttributes::NONE
-        }
-    }
-
-    fn use_uniforms(&self, program: &Program, _camera: &Camera, _lights: &[&dyn Light]) {
+    fn use_uniforms(&self, program: &Program, _viewer: &dyn Viewer, _lights: &[&dyn Light]) {
+        program.use_uniform_if_required("lightingModel", lighting_model_to_id(self.lighting_model));
         program.use_texture_cube("environmentMap", self.environment_map);
         program.use_uniform(
             "roughness",
@@ -193,26 +186,20 @@ struct BrdfMaterial {
 impl Material for BrdfMaterial {
     fn fragment_shader_source(&self, _lights: &[&dyn Light]) -> String {
         format!(
-            "{}{}{}{}",
-            super::lighting_model_shader(self.lighting_model),
+            "{}{}{}",
             include_str!("../../core/shared.frag"),
             include_str!("shaders/light_shared.frag"),
             include_str!("shaders/brdf.frag")
         )
     }
 
-    fn id(&self) -> u16 {
-        EffectMaterialId::BrdfMaterial.0
+    fn id(&self) -> EffectMaterialId {
+        EffectMaterialId::BrdfMaterial
     }
 
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            uv: true,
-            ..FragmentAttributes::NONE
-        }
+    fn use_uniforms(&self, program: &Program, _viewer: &dyn Viewer, _lights: &[&dyn Light]) {
+        program.use_uniform_if_required("lightingModel", lighting_model_to_id(self.lighting_model));
     }
-
-    fn use_uniforms(&self, _program: &Program, _camera: &Camera, _lights: &[&dyn Light]) {}
 
     fn render_states(&self) -> RenderStates {
         RenderStates::default()
@@ -237,18 +224,11 @@ impl Material for IrradianceMaterial<'_> {
         )
     }
 
-    fn id(&self) -> u16 {
-        EffectMaterialId::IrradianceMaterial.0
+    fn id(&self) -> EffectMaterialId {
+        EffectMaterialId::IrradianceMaterial
     }
 
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            uv: true,
-            ..FragmentAttributes::NONE
-        }
-    }
-
-    fn use_uniforms(&self, program: &Program, _camera: &Camera, _lights: &[&dyn Light]) {
+    fn use_uniforms(&self, program: &Program, _viewer: &dyn Viewer, _lights: &[&dyn Light]) {
         program.use_texture_cube("environmentMap", self.environment_map);
         program.use_uniform("direction", self.side.direction());
         program.use_uniform("up", self.side.up());

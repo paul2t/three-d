@@ -117,8 +117,8 @@ impl<'a> IntoIterator for &'a Wireframe {
 }
 
 impl Object for Wireframe {
-    fn render(&self, camera: &Camera, lights: &[&dyn Light]) {
-        self.lines.render(camera, lights);
+    fn render(&self, viewer: &dyn Viewer, lights: &[&dyn Light]) {
+        self.lines.render(viewer, lights);
     }
 
     fn material_type(&self) -> MaterialType {

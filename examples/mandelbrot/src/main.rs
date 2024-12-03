@@ -7,14 +7,7 @@ impl Material for MandelbrotMaterial {
         include_str!("mandelbrot.frag").to_string()
     }
 
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            position: true,
-            ..FragmentAttributes::NONE
-        }
-    }
-
-    fn use_uniforms(&self, _program: &Program, _camera: &Camera, _lights: &[&dyn Light]) {}
+    fn use_uniforms(&self, _program: &Program, _viewer: &dyn Viewer, _lights: &[&dyn Light]) {}
     fn render_states(&self) -> RenderStates {
         RenderStates {
             depth_test: DepthTest::Always,
@@ -27,8 +20,8 @@ impl Material for MandelbrotMaterial {
         MaterialType::Opaque
     }
 
-    fn id(&self) -> u16 {
-        0b11u16
+    fn id(&self) -> EffectMaterialId {
+        EffectMaterialId(0b11u16)
     }
 }
 
@@ -49,7 +42,7 @@ pub fn main() {
         vec3(0.0, 1.0, 0.0),
         2.5,
         0.0,
-        10.0,
+        20.0,
     );
 
     let mut mesh = Gm::new(
@@ -80,22 +73,34 @@ pub fn main() {
             match *event {
                 Event::MouseMotion { delta, button, .. } => {
                     if button == Some(MouseButton::Left) {
-                        let speed = 0.003 * camera.position().z.abs();
+                        let speed = 0.003 / camera.zoom_factor();
                         let right = camera.right_direction();
-                        let up = right.cross(camera.view_direction());
-                        let delta = -right * speed * delta.0 + up * speed * delta.1;
-                        camera.translate(&delta);
+                        let up = camera.up_orthogonal();
+                        camera.translate(-right * speed * delta.0 + up * speed * delta.1);
                         redraw = true;
                     }
                 }
                 Event::MouseWheel {
                     delta, position, ..
                 } => {
-                    let distance = camera.position().z.abs();
+                    let speed = 0.05 / camera.zoom_factor();
                     let mut target = camera.position_at_pixel(position);
                     target.z = 0.0;
-                    camera.zoom_towards(&target, distance * 0.05 * delta.1, 0.00001, 10.0);
+                    camera.zoom_towards(target, speed * delta.1, 0.00001, 10.0);
                     redraw = true;
+                }
+                Event::KeyPress { kind, .. } => {
+                    let zoom = match kind {
+                        Key::Num1 => Some(1.0),
+                        Key::Num2 => Some(2.0),
+                        Key::Num3 => Some(3.0),
+                        Key::Num4 => Some(4.0),
+                        _ => None,
+                    };
+                    if let Some(zoom) = zoom {
+                        camera.set_zoom_factor(zoom);
+                        redraw = true;
+                    }
                 }
                 _ => {}
             }

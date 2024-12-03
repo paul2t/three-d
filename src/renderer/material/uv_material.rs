@@ -18,22 +18,15 @@ impl FromCpuMaterial for UVMaterial {
 }
 
 impl Material for UVMaterial {
-    fn id(&self) -> u16 {
-        EffectMaterialId::UVMaterial.0
+    fn id(&self) -> EffectMaterialId {
+        EffectMaterialId::UVMaterial
     }
 
     fn fragment_shader_source(&self, _lights: &[&dyn Light]) -> String {
         include_str!("shaders/uv_material.frag").to_string()
     }
 
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            uv: true,
-            ..FragmentAttributes::NONE
-        }
-    }
-
-    fn use_uniforms(&self, _program: &Program, _camera: &Camera, _lights: &[&dyn Light]) {}
+    fn use_uniforms(&self, _program: &Program, _viewer: &dyn Viewer, _lights: &[&dyn Light]) {}
 
     fn render_states(&self) -> RenderStates {
         self.render_states

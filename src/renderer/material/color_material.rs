@@ -98,8 +98,8 @@ impl FromCpuMaterial for ColorMaterial {
 }
 
 impl Material for ColorMaterial {
-    fn id(&self) -> u16 {
-        EffectMaterialId::ColorMaterial(self.texture.is_some()).0
+    fn id(&self) -> EffectMaterialId {
+        EffectMaterialId::ColorMaterial(self.texture.is_some())
     }
 
     fn fragment_shader_source(&self, _lights: &[&dyn Light]) -> String {
@@ -113,16 +113,8 @@ impl Material for ColorMaterial {
         shader
     }
 
-    fn fragment_attributes(&self) -> FragmentAttributes {
-        FragmentAttributes {
-            color: true,
-            uv: self.texture.is_some(),
-            ..FragmentAttributes::NONE
-        }
-    }
-
-    fn use_uniforms(&self, program: &Program, camera: &Camera, _lights: &[&dyn Light]) {
-        camera.color_mapping.use_uniforms(program);
+    fn use_uniforms(&self, program: &Program, viewer: &dyn Viewer, _lights: &[&dyn Light]) {
+        viewer.color_mapping().use_uniforms(program);
         program.use_uniform("surfaceColor", self.color.to_linear_srgb());
         if let Some(ref tex) = self.texture {
             program.use_uniform("textureTransformation", tex.transformation);

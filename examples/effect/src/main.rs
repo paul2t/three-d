@@ -9,7 +9,7 @@ use three_d::*;
 
 pub async fn run() {
     let window = Window::new(WindowSettings {
-        title: "Fog!".to_string(),
+        title: "Effect!".to_string(),
         max_size: Some((1280, 720)),
         ..Default::default()
     })
@@ -39,7 +39,7 @@ pub async fn run() {
         .for_each(|m| m.material.render_states.cull = Cull::Back);
 
     let ambient = AmbientLight::new(&context, 0.4, Srgba::WHITE);
-    let directional = DirectionalLight::new(&context, 2.0, Srgba::WHITE, &vec3(-1.0, -1.0, -1.0));
+    let directional = DirectionalLight::new(&context, 2.0, Srgba::WHITE, vec3(-1.0, -1.0, -1.0));
 
     // Fog
     let mut fog_effect = FogEffect {

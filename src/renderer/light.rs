@@ -12,7 +12,7 @@ macro_rules! impl_light_body {
         fn use_uniforms(&self, program: &Program, i: u32) {
             self.$inner().use_uniforms(program, i)
         }
-        fn id(&self) -> u8 {
+        fn id(&self) -> LightId {
             self.$inner().id()
         }
     };
@@ -41,7 +41,8 @@ mod environment;
 pub use environment::*;
 
 use crate::core::*;
-use crate::renderer::camera::*;
+use crate::renderer::viewer::*;
+use crate::renderer::LightId;
 
 ///
 /// Specifies how the intensity of a light fades over distance.
@@ -83,9 +84,9 @@ pub trait Light {
     /// Returns a unique ID for each variation of the shader source returned from `Light::shader_source`.
     ///
     /// **Note:** The last bit is reserved to internally implemented materials, so if implementing the `Light` trait
-    /// outside of this crate, always return an id that is smaller than `0b1u8 << 7`.
+    /// outside of this crate, always return an id in the public use range as defined by [LightId].
     ///
-    fn id(&self) -> u8;
+    fn id(&self) -> LightId;
 }
 
 impl<T: Light + ?Sized> Light for &T {
@@ -119,7 +120,7 @@ impl<T: Light> Light for std::sync::Arc<std::sync::RwLock<T>> {
     fn use_uniforms(&self, program: &Program, i: u32) {
         self.read().unwrap().use_uniforms(program, i)
     }
-    fn id(&self) -> u8 {
+    fn id(&self) -> LightId {
         self.read().unwrap().id()
     }
 }
@@ -133,9 +134,8 @@ impl<T: Light> Light for std::sync::Arc<std::sync::RwLock<T>> {
 /// vec3 calculate_lighting(vec3 camera_position, vec3 surface_color, vec3 position, vec3 normal, float metallic, float roughness, float occlusion)
 /// ```
 ///
-pub fn lights_shader_source(lights: &[&dyn Light], lighting_model: LightingModel) -> String {
-    let mut shader_source = lighting_model_shader(lighting_model).to_string();
-    shader_source.push_str(include_str!("../core/shared.frag"));
+pub fn lights_shader_source(lights: &[&dyn Light]) -> String {
+    let mut shader_source = include_str!("../core/shared.frag").to_string();
     shader_source.push_str(include_str!("light/shaders/light_shared.frag"));
     let mut dir_fun = String::new();
     for (i, light) in lights.iter().enumerate() {
@@ -172,15 +172,22 @@ fn compute_up_direction(direction: Vec3) -> Vec3 {
     }
 }
 
-use crate::renderer::{LightingModel, NormalDistributionFunction};
-pub(crate) fn lighting_model_shader(lighting_model: LightingModel) -> &'static str {
-    match lighting_model {
-        LightingModel::Phong => "#define PHONG",
-        LightingModel::Blinn => "#define BLINN",
-        LightingModel::Cook(normal, _) => match normal {
-            NormalDistributionFunction::Blinn => "#define COOK\n#define COOK_BLINN\n",
-            NormalDistributionFunction::Beckmann => "#define COOK\n#define COOK_BECKMANN\n",
-            NormalDistributionFunction::TrowbridgeReitzGGX => "#define COOK\n#define COOK_GGX\n",
-        },
+use crate::renderer::{GeometryFunction, LightingModel, NormalDistributionFunction};
+pub(crate) fn lighting_model_to_id(model: LightingModel) -> u32 {
+    match model {
+        LightingModel::Phong => 1,
+        LightingModel::Blinn => 2,
+        LightingModel::Cook(
+            NormalDistributionFunction::Blinn,
+            GeometryFunction::SmithSchlickGGX,
+        ) => 3,
+        LightingModel::Cook(
+            NormalDistributionFunction::Beckmann,
+            GeometryFunction::SmithSchlickGGX,
+        ) => 4,
+        LightingModel::Cook(
+            NormalDistributionFunction::TrowbridgeReitzGGX,
+            GeometryFunction::SmithSchlickGGX,
+        ) => 5,
     }
 }
