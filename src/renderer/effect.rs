@@ -60,6 +60,10 @@ mod water;
 #[doc(inline)]
 pub use water::*;
 
+mod oit_resolve;
+#[doc(inline)]
+pub use oit_resolve::*;
+
 pub(crate) mod lighting_pass;
 
 use crate::renderer::*;

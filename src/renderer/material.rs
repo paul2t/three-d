@@ -139,6 +139,8 @@ pub enum MaterialType {
     Opaque,
     /// Forward transparent
     Transparent,
+    /// Order Independent transparency
+    TransparentOIT,
     /// Deferred opaque
     Deferred,
 }

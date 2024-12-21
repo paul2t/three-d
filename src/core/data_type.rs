@@ -611,20 +611,55 @@ impl<T: PrimitiveDataType> DataType for Matrix4<T> {
 
 pub trait DepthDataType {
     fn internal_format() -> u32;
+    fn internal_type() -> u32;
 }
 
 impl DepthDataType for f16 {
     fn internal_format() -> u32 {
         crate::context::DEPTH_COMPONENT16
     }
+    fn internal_type() -> u32 {
+        crate::context::UNSIGNED_SHORT
+    }
 }
-impl DepthDataType for f24 {
+impl DepthDataType for u24 {
     fn internal_format() -> u32 {
         crate::context::DEPTH_COMPONENT24
+    }
+    fn internal_type() -> u32 {
+        crate::context::UNSIGNED_INT
+    }
+}
+#[cfg(not(target_arch = "wasm32"))]
+impl DepthDataType for u32 {
+    fn internal_format() -> u32 {
+        crate::context::DEPTH_COMPONENT32
+    }
+    fn internal_type() -> u32 {
+        crate::context::UNSIGNED_INT
     }
 }
 impl DepthDataType for f32 {
     fn internal_format() -> u32 {
         crate::context::DEPTH_COMPONENT32F
+    }
+    fn internal_type() -> u32 {
+        crate::context::FLOAT
+    }
+}
+impl DepthDataType for u24u8 {
+    fn internal_format() -> u32 {
+        crate::context::DEPTH24_STENCIL8
+    }
+    fn internal_type() -> u32 {
+        crate::context::UNSIGNED_INT_24_8
+    }
+}
+impl DepthDataType for f32u8 {
+    fn internal_format() -> u32 {
+        crate::context::DEPTH32F_STENCIL8
+    }
+    fn internal_type() -> u32 {
+        crate::context::FLOAT_32_UNSIGNED_INT_24_8_REV
     }
 }

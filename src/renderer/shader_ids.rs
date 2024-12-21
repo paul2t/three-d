@@ -127,6 +127,7 @@ pub enum EffectMaterialId {
     LightingPassEffectBase = 0x5000, // To 0x503F
     WaterEffectBase = 0x5800,        // To 0x583F
     CopyEffectBase = 0x6000,         // To 0x603F
+    OitResolveEffectBase = 0x6010,   // To 0x603F
     ScreenEffectBase = 0x6800,       // To 0x683F
     FogEffectBase = 0x7000,          // To 0x703F
     FxaaEffectBase = 0x7800,         // To 0x7838 (has holes)
@@ -143,15 +144,16 @@ pub enum EffectMaterialId {
     BrdfMaterial = 0x800E,
     IrradianceMaterial = 0x800F,
     ORMMaterialBase = 0x8010,              // To 0x8013
-    PhysicalMaterialBase = 0x8020,         // To 0x803F
-    DeferredPhysicalMaterialBase = 0x8040, // To 0x807F
-    PrefilterMaterial = 0x8080,
+    PhysicalMaterialBase = 0x8040,         // To 0x804F
+    DeferredPhysicalMaterialBase = 0x8080, // To 0x80FF
+    PrefilterMaterial = 0x8100,
 }
 
 impl EffectMaterialId {
     enum_effectfield!(LightingPassEffectBase, LightingPassEffect(...Default));
     enum_effectfield!(WaterEffectBase, WaterEffect(...Default));
     enum_effectfield!(CopyEffectBase, CopyEffect(Option<...Default>));
+    enum_effectfield!(OitResolveEffectBase, OitResolveEffect(Option<...Default>));
     enum_effectfield!(ScreenEffectBase, ScreenEffect(Option<...Default>));
     enum_effectfield!(FogEffectBase, FogEffect(...Default));
     enum_effectfield!(FxaaEffectBase, FxaaEffect(color_texture: ColorTexture));
@@ -170,6 +172,7 @@ impl EffectMaterialId {
             occlusion_texture,
             normal_texture,
             emissive_texture,
+            oit,
         )
     );
     enum_bitfield!(

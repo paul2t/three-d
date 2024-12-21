@@ -27,8 +27,9 @@ pub struct SurfaceSettings {
     pub depth_buffer: u8,
     /// Sets the number of bits in the stencil buffer.
     /// A value of 0 means no stencil buffer.
-    /// The default value is 0.
+    /// The default value is 8.
     /// On web, this can only be off (0) or on (>0).
+    /// If disabled, OIT transparency will not work on chrome.
     pub stencil_buffer: u8,
     /// Set the level of the multisampling anti-aliasing (MSAA).
     /// Must be a power-of-two. Higher = more smooth edges.
@@ -47,7 +48,7 @@ impl Default for SurfaceSettings {
         Self {
             vsync: true,
             depth_buffer: 24,
-            stencil_buffer: 0,
+            stencil_buffer: 8,
             multisamples: 4,
             hardware_acceleration: HardwareAcceleration::Preferred,
         }

@@ -58,6 +58,20 @@ impl<'a> ColorTarget<'a> {
         }
     }
 
+    pub(crate) fn new_texture2d_list(
+        context: &Context,
+        textures: &'a [&'a Texture2D],
+        names: &'a [&'a str],
+        mip_level: Option<u32>,
+    ) -> Self {
+        ColorTarget {
+            context: context.clone(),
+            mip_level,
+            target: Some(ColorTexture::List { textures, names }),
+            multisample_target: None,
+        }
+    }
+
     pub(in crate::core) fn new_texture_2d_multisample(
         context: &Context,
         texture: &'a Texture2DMultisample,
@@ -157,6 +171,9 @@ impl<'a> ColorTarget<'a> {
                 ColorTexture::Array { texture, .. } => {
                     size_with_mip(texture.width(), self.mip_level)
                 }
+                ColorTexture::List { textures, .. } => {
+                    size_with_mip(textures[0].width(), self.mip_level)
+                }
                 ColorTexture::CubeMap { texture, .. } => {
                     size_with_mip(texture.width(), self.mip_level)
                 }
@@ -176,6 +193,9 @@ impl<'a> ColorTarget<'a> {
                 ColorTexture::Single(texture) => size_with_mip(texture.height(), self.mip_level),
                 ColorTexture::Array { texture, .. } => {
                     size_with_mip(texture.height(), self.mip_level)
+                }
+                ColorTexture::List { textures, .. } => {
+                    size_with_mip(textures[0].height(), self.mip_level)
                 }
                 ColorTexture::CubeMap { texture, .. } => {
                     size_with_mip(texture.height(), self.mip_level)
@@ -201,6 +221,13 @@ impl<'a> ColorTarget<'a> {
                 ColorTexture::Array { texture, .. } => {
                     if self.mip_level.is_none() {
                         texture.generate_mip_maps()
+                    }
+                }
+                ColorTexture::List { textures, .. } => {
+                    if self.mip_level.is_none() {
+                        for texture in textures {
+                            texture.generate_mip_maps()
+                        }
                     }
                 }
                 ColorTexture::CubeMap { texture, .. } => {
@@ -231,6 +258,16 @@ impl<'a> ColorTarget<'a> {
                             channel as u32,
                             self.mip_level.unwrap_or(0),
                         );
+                    });
+                },
+                ColorTexture::List { textures, .. } => unsafe {
+                    context.draw_buffers(
+                        &(0..textures.len())
+                            .map(|i| crate::context::COLOR_ATTACHMENT0 + i as u32)
+                            .collect::<Vec<u32>>(),
+                    );
+                    textures.iter().enumerate().for_each(|(channel, texture)| {
+                        texture.bind_as_color_target(channel as u32, self.mip_level.unwrap_or(0));
                     });
                 },
                 ColorTexture::CubeMap { texture, sides } => unsafe {
