@@ -499,7 +499,7 @@ impl Program {
             viewport,
             element_buffer,
             0,
-            element_buffer.count() as u32,
+            element_buffer.count(),
         )
     }
 
@@ -521,12 +521,8 @@ impl Program {
         self.use_program();
         element_buffer.bind();
         unsafe {
-            self.context.draw_elements(
-                self.mode,
-                count as i32,
-                T::data_type(),
-                first as i32,
-            );
+            self.context
+                .draw_elements(self.mode, count as i32, T::data_type(), first as i32);
             self.context
                 .bind_buffer(crate::context::ELEMENT_ARRAY_BUFFER, None);
 
@@ -559,7 +555,7 @@ impl Program {
             viewport,
             element_buffer,
             0,
-            element_buffer.count() as u32,
+            element_buffer.count(),
             instance_count,
         )
     }

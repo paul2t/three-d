@@ -25,7 +25,7 @@ impl Texture2DArray {
     ///
     pub fn new(context: &Context, cpu_textures: &[&CpuTexture]) -> Self {
         let cpu_texture = cpu_textures
-            .get(0)
+            .first()
             .expect("Expect at least one texture in a texture array");
         match &cpu_texture.data {
             TextureData::RU8(_) => Self::new_with_data(

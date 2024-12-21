@@ -96,7 +96,7 @@ impl Environment {
                             environment_map,
                             side,
                         },
-                        &Camera::new_2d(viewport),
+                        Camera::new_2d(viewport),
                         &[],
                     );
             }
@@ -132,7 +132,7 @@ impl Environment {
                                 mip,
                                 max_mip_levels,
                             },
-                            &Camera::new_2d(viewport),
+                            Camera::new_2d(viewport),
                             &[],
                         );
                 }
@@ -156,7 +156,7 @@ impl Environment {
             .clear(ClearState::default())
             .apply_screen_material(
                 &BrdfMaterial { lighting_model },
-                &Camera::new_2d(viewport),
+                Camera::new_2d(viewport),
                 &[],
             );
 

@@ -132,7 +132,6 @@ pub async fn run() {
                             }
                         };
                         change = true;
-                    } else {
                     }
                 }
             }
