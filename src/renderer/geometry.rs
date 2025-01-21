@@ -287,6 +287,7 @@ struct BaseMesh {
     tangents: Option<VertexBuffer<Vec4>>,
     uvs: Option<VertexBuffer<Vec2>>,
     colors: Option<VertexBuffer<Vec4>>,
+    clip_plane: Option<ClipPlane>,
 }
 
 impl BaseMesh {
@@ -325,12 +326,29 @@ impl BaseMesh {
                     &data.iter().map(|c| c.to_linear_srgb()).collect::<Vec<_>>(),
                 )
             }),
+            clip_plane: None,
+        }
+    }
+
+    fn init_clip_planes(&self, program: &Program) {
+        if let Some(clip_plane) = &self.clip_plane {
+            if program.requires_uniform("clipPlane") {
+                program.use_uniform("clipPlane", clip_plane.as_vec4());
+                program.enable_clip_plane(0);
+            }
+        }
+    }
+
+    fn uninit_clip_planes(&self, program: &Program) {
+        if self.clip_plane.is_some() {
+            program.disable_clip_plane(0);
         }
     }
 
     pub fn draw(&self, program: &Program, render_states: RenderStates, viewer: &dyn Viewer) {
         self.use_attributes(program);
 
+        self.init_clip_planes(program);
         match &self.indices {
             IndexBuffer::None => program.draw_arrays(
                 render_states,
@@ -347,6 +365,7 @@ impl BaseMesh {
                 program.draw_elements(render_states, viewer.viewport(), element_buffer)
             }
         }
+        self.uninit_clip_planes(program);
     }
 
     pub fn draw_instanced(
@@ -358,6 +377,7 @@ impl BaseMesh {
     ) {
         self.use_attributes(program);
 
+        self.init_clip_planes(program);
         match &self.indices {
             IndexBuffer::None => program.draw_arrays_instanced(
                 render_states,
@@ -384,6 +404,7 @@ impl BaseMesh {
                 instance_count,
             ),
         }
+        self.uninit_clip_planes(program);
     }
 
     fn use_attributes(&self, program: &Program) {
@@ -416,29 +437,34 @@ impl BaseMesh {
 
     fn vertex_shader_source(&self) -> String {
         format!(
-            "{}{}{}{}{}{}",
-            if self.normals.is_some() {
+            "{use_normals}{use_tangents}{use_uvs}{use_colors}{use_clip_plane}{shared_frag}{mesh_vert}",
+            use_normals = if self.normals.is_some() {
                 "#define USE_NORMALS\n"
             } else {
                 ""
             },
-            if self.tangents.is_some() {
+            use_tangents = if self.tangents.is_some() {
                 "#define USE_TANGENTS\n"
             } else {
                 ""
             },
-            if self.uvs.is_some() {
+            use_uvs = if self.uvs.is_some() {
                 "#define USE_UVS\n"
             } else {
                 ""
             },
-            if self.colors.is_some() {
+            use_colors = if self.colors.is_some() {
                 "#define USE_VERTEX_COLORS\n"
             } else {
                 ""
             },
-            include_str!("../core/shared.frag"),
-            include_str!("geometry/shaders/mesh.vert"),
+            use_clip_plane = if self.clip_plane.is_some() {
+                "#define USE_CLIP_PLANE\n"
+            } else {
+                ""
+            },
+            shared_frag = include_str!("../core/shared.frag"),
+            mesh_vert = include_str!("geometry/shaders/mesh.vert"),
         )
     }
 }

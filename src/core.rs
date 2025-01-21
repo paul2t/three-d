@@ -32,6 +32,10 @@ mod scissor_box;
 #[doc(inline)]
 pub use scissor_box::*;
 
+mod clip_plane;
+#[doc(inline)]
+pub use clip_plane::*;
+
 pub mod prelude {
 
     //!

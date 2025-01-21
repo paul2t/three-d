@@ -132,6 +132,13 @@ impl Mesh {
     pub fn colors_mut(&mut self) -> &mut Option<VertexBuffer<Vec4>> {
         &mut self.base_mesh.colors
     }
+
+    ///
+    /// Sets the clip plane for this mesh.
+    ///
+    pub fn set_clip_plane(&mut self, plane: Option<ClipPlane>) {
+        self.base_mesh.clip_plane = plane;
+    }
 }
 
 impl<'a> IntoIterator for &'a Mesh {
@@ -182,6 +189,7 @@ impl Geometry for Mesh {
             self.base_mesh.tangents.is_some(),
             self.base_mesh.uvs.is_some(),
             self.base_mesh.colors.is_some(),
+            self.base_mesh.clip_plane.is_some(),
         )
     }
 

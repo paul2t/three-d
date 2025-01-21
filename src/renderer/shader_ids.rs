@@ -97,14 +97,14 @@ pub enum GeometryId {
     TerrainPatch = 0x8002,
     Sprites = 0x8004,
     WaterPatch = 0x8005,
-    MeshBase = 0x8010,           // To 0x801F
-    LinesBase = 0x8020,          // To 0x802F
+    LinesBase = 0x8008,          // To 0x8009
+    MeshBase = 0x8020,           // To 0x803F
     ParticleSystemBase = 0x8040, // To 0x807F
     InstancedMeshBase = 0x8080,  // To 0x80FF
 }
 
 impl GeometryId {
-    enum_bitfield!(MeshBase, Mesh(normal, tangents, uv, color));
+    enum_bitfield!(MeshBase, Mesh(normal, tangents, uv, color, clip_plane));
     enum_bitfield!(LinesBase, Lines(color));
     enum_bitfield!(
         ParticleSystemBase,
@@ -112,7 +112,15 @@ impl GeometryId {
     );
     enum_bitfield!(
         InstancedMeshBase,
-        InstancedMesh(normal, tangents, uv, color, instance_color, instance_uv)
+        InstancedMesh(
+            normal,
+            tangents,
+            uv,
+            color,
+            instance_color,
+            instance_uv,
+            clip_plane
+        )
     );
 }
 

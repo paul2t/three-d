@@ -257,6 +257,7 @@ impl Geometry for InstancedMesh {
             self.base_mesh.colors.is_some(),
             self.instance_color.read().unwrap().is_some(),
             self.tex_transform.read().unwrap().is_some(),
+            self.base_mesh.clip_plane.is_some(),
         )
     }
 

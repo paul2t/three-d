@@ -302,6 +302,14 @@ impl Program {
         index
     }
 
+    pub(crate) fn enable_clip_plane(&self, index: u32) {
+        unsafe { self.context.enable(crate::context::CLIP_DISTANCE0 + index) };
+    }
+
+    pub(crate) fn disable_clip_plane(&self, index: u32) {
+        unsafe { self.context.disable(crate::context::CLIP_DISTANCE0 + index) };
+    }
+
     ///
     /// Use the given [UniformBuffer] in this shader program and associate it with the given named variable.
     ///

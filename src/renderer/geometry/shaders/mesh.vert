@@ -48,6 +48,10 @@ in vec4 color;
 in vec4 instance_color;
 #endif
 
+#ifdef USE_CLIP_PLANE
+uniform vec4 clipPlane;
+#endif
+
 out vec4 col;
 flat out int instance_id;
 
@@ -112,4 +116,8 @@ void main()
     col *= instance_color;
 #endif
     instance_id = gl_InstanceID;
+
+#ifdef USE_CLIP_PLANE
+    gl_ClipDistance[0] = dot(worldPosition, clipPlane);
+#endif
 }
