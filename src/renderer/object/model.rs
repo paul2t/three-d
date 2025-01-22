@@ -165,6 +165,31 @@ impl<M: Material + FromCpuMaterial + Clone + Default> Model<M> {
     pub fn animate(&mut self, time: f32) {
         self.iter_mut().for_each(|m| m.animate(time));
     }
+
+    ///
+    /// Returns the axis-aligned bounding box of this model.
+    ///
+    pub fn aabb(&self) -> AxisAlignedBoundingBox {
+        let mut aabb = AxisAlignedBoundingBox::EMPTY;
+        for part in self.0.iter() {
+            aabb.expand_with_aabb(part.aabb());
+        }
+        aabb
+    }
+
+    ///
+    /// Returns an iterator over all the [Gm]s in this model.
+    ///
+    pub fn iter_gm(&self) -> impl Iterator<Item = &Gm<Mesh, M>> {
+        self.iter().map(|m| &m.gm)
+    }
+
+    ///
+    /// Returns an iterator over all the mutable [Gm]s in this model.
+    ///
+    pub fn iter_gm_mut(&mut self) -> impl Iterator<Item = &mut Gm<Mesh, M>> {
+        self.iter_mut().map(|m| &mut m.gm)
+    }
 }
 
 impl<M: Material> std::ops::Deref for Model<M> {
