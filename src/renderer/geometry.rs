@@ -331,6 +331,7 @@ impl BaseMesh {
     }
 
     fn init_clip_planes(&self, program: &Program) {
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(clip_plane) = &self.clip_plane {
             if program.requires_uniform("clipPlane") {
                 program.use_uniform("clipPlane", clip_plane.as_vec4());
@@ -340,6 +341,7 @@ impl BaseMesh {
     }
 
     fn uninit_clip_planes(&self, program: &Program) {
+        #[cfg(not(target_arch = "wasm32"))]
         if self.clip_plane.is_some() {
             program.disable_clip_plane(0);
         }
@@ -458,7 +460,7 @@ impl BaseMesh {
             } else {
                 ""
             },
-            use_clip_plane = if self.clip_plane.is_some() {
+            use_clip_plane = if cfg!(not(target_arch = "wasm32")) && self.clip_plane.is_some() {
                 "#define USE_CLIP_PLANE\n"
             } else {
                 ""

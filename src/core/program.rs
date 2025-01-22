@@ -303,11 +303,17 @@ impl Program {
     }
 
     pub(crate) fn enable_clip_plane(&self, index: u32) {
-        unsafe { self.context.enable(crate::context::CLIP_DISTANCE0 + index) };
+        #[cfg(not(target_arch = "wasm32"))]
+        unsafe {
+            self.context.enable(crate::context::CLIP_DISTANCE0 + index)
+        };
     }
 
     pub(crate) fn disable_clip_plane(&self, index: u32) {
-        unsafe { self.context.disable(crate::context::CLIP_DISTANCE0 + index) };
+        #[cfg(not(target_arch = "wasm32"))]
+        unsafe {
+            self.context.disable(crate::context::CLIP_DISTANCE0 + index)
+        };
     }
 
     ///
