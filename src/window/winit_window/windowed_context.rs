@@ -34,7 +34,13 @@ mod inner {
             settings: SurfaceSettings,
         ) -> Result<Self, WindowError> {
             let canvas = window.canvas().ok_or(WindowError::WindowCreation)?;
+            Self::from_canvas(&canvas, settings)
+        }
 
+        pub fn from_canvas(
+            canvas: &web_sys::HtmlCanvasElement,
+            settings: SurfaceSettings,
+        ) -> Result<Self, WindowError> {
             // get webgl context and verify extensions
             let webgl_context = canvas
                 .get_context_with_context_options(
