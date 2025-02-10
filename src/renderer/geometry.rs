@@ -330,6 +330,7 @@ impl BaseMesh {
         }
     }
 
+    #[allow(unused)]
     fn init_clip_planes(&self, program: &Program) {
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(clip_plane) = &self.clip_plane {
@@ -340,6 +341,7 @@ impl BaseMesh {
         }
     }
 
+    #[allow(unused)]
     fn uninit_clip_planes(&self, program: &Program) {
         #[cfg(not(target_arch = "wasm32"))]
         if self.clip_plane.is_some() {

@@ -182,6 +182,7 @@ impl Window {
                 .with_prevent_default(true)
         };
 
+        #[allow(deprecated)]
         let winit_window = event_loop
             .create_window(window_builder)
             .map_err(WinitError::OsError)?;
@@ -242,7 +243,8 @@ impl Window {
     ///
     pub fn render_loop<F: 'static + FnMut(FrameInput) -> FrameOutput>(self, mut callback: F) {
         let mut frame_input_generator = FrameInputGenerator::from_winit_window(&self.window);
-        _ = self.event_loop.run(move |event, event_loop| match event {
+        #[allow(deprecated)]
+        let _ = self.event_loop.run(move |event, event_loop| match event {
             Event::LoopExiting => {
                 #[cfg(target_arch = "wasm32")]
                 {

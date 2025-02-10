@@ -302,6 +302,7 @@ impl Program {
         index
     }
 
+    #[allow(unused)]
     pub(crate) fn enable_clip_plane(&self, index: u32) {
         #[cfg(not(target_arch = "wasm32"))]
         unsafe {
@@ -309,6 +310,7 @@ impl Program {
         };
     }
 
+    #[allow(unused)]
     pub(crate) fn disable_clip_plane(&self, index: u32) {
         #[cfg(not(target_arch = "wasm32"))]
         unsafe {
