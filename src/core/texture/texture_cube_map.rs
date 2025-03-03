@@ -314,46 +314,32 @@ impl TextureCubeMap {
         wrap_t: Wrapping,
         wrap_r: Wrapping,
     ) -> Self {
-        let id = generate(context);
-        let number_of_mip_maps = calculate_number_of_mip_maps::<T>(mipmap, width, height, None);
-        let texture = Self {
-            context: context.clone(),
-            id,
-            width,
-            height,
-            number_of_mip_maps,
-            data_byte_size: std::mem::size_of::<T>(),
-        };
-        texture.bind();
-        set_parameters(
-            context,
-            crate::context::TEXTURE_CUBE_MAP,
-            min_filter,
-            mag_filter,
-            if number_of_mip_maps == 1 {
-                None
-            } else {
-                mipmap
-            },
-            wrap_s,
-            wrap_t,
-            Some(wrap_r),
-        );
         unsafe {
-            context.tex_storage_2d(
-                crate::context::TEXTURE_CUBE_MAP,
-                number_of_mip_maps as i32,
-                T::internal_format(),
-                width as i32,
-                height as i32,
-            );
+            Self::new_unchecked::<T>(
+                context,
+                width,
+                height,
+                min_filter,
+                mag_filter,
+                mipmap,
+                wrap_s,
+                wrap_t,
+                wrap_r,
+                |texture| {
+                    context.tex_storage_2d(
+                        crate::context::TEXTURE_CUBE_MAP,
+                        texture.number_of_mip_maps() as i32,
+                        T::internal_format(),
+                        width as i32,
+                        height as i32,
+                    )
+                },
+            )
         }
-        texture.generate_mip_maps();
-        texture
     }
 
     ///
-    /// Fills the cube map texture with the given pixel data for the 6 images.
+    /// Fills the cube map texture with the given pixel data for the 6 images and generate mip maps if specified at construction.
     ///
     /// # Panic
     /// Will panic if the length of the data for all 6 images does not correspond to the width, height and format specified at construction.
@@ -431,7 +417,7 @@ impl TextureCubeMap {
                     self.height as i32,
                     format_from_data_type::<T>(),
                     T::data_type(),
-                    crate::context::PixelUnpackData::Slice(to_byte_slice(data)),
+                    crate::context::PixelUnpackData::Slice(Some(to_byte_slice(data))),
                 );
             }
         }
@@ -566,6 +552,56 @@ impl TextureCubeMap {
             self.context
                 .bind_texture(crate::context::TEXTURE_CUBE_MAP, Some(self.id));
         }
+    }
+
+    ///
+    /// Creates a new texture where it is up to the caller to allocate and transfer data to the GPU
+    /// using low-level context calls inside the callback.
+    /// This function binds the texture and sets the parameters before calling the callback and generates mip maps afterwards.
+    ///
+    /// **Note:** This function is unsafe and should only be used in special cases,
+    /// for example when you have an uncommon source of data or the data is in a special format like sRGB.
+    ///
+    pub unsafe fn new_unchecked<T: TextureDataType>(
+        context: &Context,
+        width: u32,
+        height: u32,
+        min_filter: Interpolation,
+        mag_filter: Interpolation,
+        mipmap: Option<Mipmap>,
+        wrap_s: Wrapping,
+        wrap_t: Wrapping,
+        wrap_r: Wrapping,
+        callback: impl FnOnce(&Self),
+    ) -> Self {
+        let id = generate(context);
+        let number_of_mip_maps = calculate_number_of_mip_maps::<T>(mipmap, width, height, None);
+        let texture = Self {
+            context: context.clone(),
+            id,
+            width,
+            height,
+            number_of_mip_maps,
+            data_byte_size: std::mem::size_of::<T>(),
+        };
+        texture.bind();
+        set_parameters(
+            context,
+            crate::context::TEXTURE_CUBE_MAP,
+            min_filter,
+            mag_filter,
+            if number_of_mip_maps == 1 {
+                None
+            } else {
+                mipmap
+            },
+            wrap_s,
+            wrap_t,
+            Some(wrap_r),
+        );
+        callback(&texture);
+        texture.generate_mip_maps();
+        texture
     }
 }
 

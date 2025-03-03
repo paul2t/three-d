@@ -656,9 +656,10 @@ pub fn cmp_render_order(
 ///
 pub fn pick(
     context: &Context,
-    camera: &Camera,
+    camera: &three_d_asset::Camera,
     pixel: impl Into<PhysicalPoint> + Copy,
     geometries: impl IntoIterator<Item = impl Geometry>,
+    culling: Cull,
 ) -> Option<IntersectionResult> {
     let pos = camera.position_at_pixel(pixel);
     let dir = camera.view_direction_at_pixel(pixel);
@@ -668,6 +669,7 @@ pub fn pick(
         dir,
         camera.z_far() - camera.z_near(),
         geometries,
+        culling,
     )
 }
 
@@ -693,6 +695,7 @@ pub fn ray_intersect(
     direction: Vec3,
     max_depth: f32,
     geometries: impl IntoIterator<Item = impl Geometry>,
+    culling: Cull,
 ) -> Option<IntersectionResult> {
     use crate::core::*;
     let viewport = Viewport::new_at_origo(1, 1);
@@ -730,6 +733,7 @@ pub fn ray_intersect(
     let mut material = IntersectionMaterial {
         ..Default::default()
     };
+    material.render_states.cull = culling;
     let result = RenderTarget::new(
         texture.as_color_target(None),
         depth_texture.as_depth_target(),
