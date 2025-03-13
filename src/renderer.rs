@@ -68,7 +68,7 @@ macro_rules! impl_render_target_extensions_body {
         ///
         /// Render the objects using the given viewer and lights into this render target.
         /// Use an empty array for the `lights` argument, if the objects does not require lights to be rendered.
-        /// Also, objects outside the viewer frustum are not rendered and the objects are rendered in the order given by [cmp_render_order].
+        /// Also, the objects are rendered in the order given by [cmp_render_order].
         ///
         pub fn render(
             &self,
@@ -82,7 +82,7 @@ macro_rules! impl_render_target_extensions_body {
         ///
         /// Render the objects using the given viewer and lights into the part of this render target defined by the scissor box.
         /// Use an empty array for the `lights` argument, if the objects does not require lights to be rendered.
-        /// Also, objects outside the viewer frustum are not rendered and the objects are rendered in the order given by [cmp_render_order].
+        /// Also, the objects are rendered in the order given by [cmp_render_order].
         ///
         pub fn render_partially(
             &self,
@@ -91,10 +91,8 @@ macro_rules! impl_render_target_extensions_body {
             objects: impl IntoIterator<Item = impl Object>,
             lights: &[&dyn Light],
         ) -> &Self {
-            let frustum = Frustum::new(viewer.projection() * viewer.view());
             let (mut deferred_objects, forward_objects): (Vec<_>, Vec<_>) = objects
                 .into_iter()
-                .filter(|o| frustum.contains(o.aabb()))
                 .partition(|o| o.material_type() == MaterialType::Deferred);
 
             // Deferred
@@ -152,7 +150,6 @@ macro_rules! impl_render_target_extensions_body {
             // Forward
             let (transparent_objects, mut opaque_objects): (Vec<_>, Vec<_>) = forward_objects
                 .iter()
-                .filter(|o| frustum.contains(o.aabb()))
                 .partition(|o| o.material_type() == MaterialType::TransparentOIT);
 
             // Opaque pass
@@ -270,12 +267,8 @@ macro_rules! impl_render_target_extensions_body {
             geometries: impl IntoIterator<Item = impl Geometry>,
             lights: &[&dyn Light],
         ) -> &Self {
-            let frustum = Frustum::new(viewer.projection() * viewer.view());
             self.write_partially::<RendererError>(scissor_box, || {
-                for geometry in geometries
-                    .into_iter()
-                    .filter(|o| frustum.contains(o.aabb()))
-                {
+                for geometry in geometries.into_iter() {
                     render_with_material(&self.context, &viewer, geometry, material, lights);
                 }
                 Ok(())
@@ -322,12 +315,8 @@ macro_rules! impl_render_target_extensions_body {
             color_texture: Option<ColorTexture>,
             depth_texture: Option<DepthTexture>,
         ) -> &Self {
-            let frustum = Frustum::new(viewer.projection() * viewer.view());
             self.write_partially::<RendererError>(scissor_box, || {
-                for geometry in geometries
-                    .into_iter()
-                    .filter(|o| frustum.contains(o.aabb()))
-                {
+                for geometry in geometries.into_iter() {
                     render_with_effect(
                         &self.context,
                         &viewer,
