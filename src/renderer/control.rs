@@ -3,6 +3,8 @@
 //!
 
 mod orbit_control;
+use std::path::PathBuf;
+
 #[doc(inline)]
 pub use orbit_control::*;
 
@@ -137,6 +139,13 @@ pub enum Event {
     },
     /// Fires when some text has been written.
     Text(String),
+
+    /// Fires when a file has been dropped on the window.
+    DroppedFile(PathBuf),
+    /// Fires when a file hovers over the window.
+    HoveredFile(PathBuf),
+    /// Fires when a file hover is cancelled.
+    HoveredFileCancelled,
 }
 
 /// Keyboard key input.

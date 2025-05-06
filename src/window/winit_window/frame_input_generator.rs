@@ -391,6 +391,15 @@ impl FrameInputGenerator {
                     }
                 }
             }
+            WindowEvent::HoveredFile(path) => {
+                self.events.push(crate::Event::HoveredFile(path.clone()));
+            }
+            WindowEvent::HoveredFileCancelled => {
+                self.events.push(crate::Event::HoveredFileCancelled);
+            }
+            WindowEvent::DroppedFile(path) => {
+                self.events.push(crate::Event::DroppedFile(path.clone()));
+            }
             _ => (),
         }
     }
