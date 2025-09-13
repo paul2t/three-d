@@ -351,4 +351,32 @@ impl Window {
     pub fn gl(&self) -> Context {
         (*self.gl).clone()
     }
+
+    ///
+    /// Maximizes the window
+    /// 
+    pub fn set_maximized(&self, maximized: bool) {
+        self.window.set_maximized(maximized);
+    }
+
+    ///
+    /// Returns true if the window is maximized
+    ///
+    pub fn maximized(&self) -> bool {
+        self.window.is_maximized()
+    }
+
+    ///
+    /// Minimizes the window
+    /// 
+    pub fn set_minimized(&self, minimized: bool) {
+        self.window.set_minimized(minimized);
+    }
+
+    ///
+    /// Returns true if the window is minimized
+    ///
+    pub fn minimized(&self) -> Option<bool> {
+        self.window.is_minimized()
+    }
 }
