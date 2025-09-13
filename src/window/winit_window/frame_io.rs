@@ -38,6 +38,12 @@ pub struct FrameInput {
 
     /// The graphics context for the window.
     pub context: Context,
+
+    /// Whether or not the window is minimized.
+    pub is_minimized: Option<bool>,
+
+    /// Whether or not the window is maximized.
+    pub is_maximized: bool,
 }
 
 impl FrameInput {

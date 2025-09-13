@@ -291,19 +291,32 @@ impl Window {
                             }
                         }
 
-                        let frame_input = frame_input_generator.generate(&self.gl);
+                        let frame_input = frame_input_generator.generate(&self.gl, self.window.is_minimized(), self.window.is_maximized());
                         let frame_output = callback(frame_input);
                         if frame_output.exit {
                             event_loop.exit();
                         } else {
                             if frame_output.minimize {
-                                self.window.set_maximized(false);
+                                if let Some(minimized) = self.window.is_minimized() {
+                                    if !minimized {
+                                        self.window.set_minimized(true);
+                                    }
+                                }
                             }
                             if frame_output.maximize {
-                                self.window.set_maximized(true);
+                                if !self.window.is_maximized() {
+                                    self.window.set_maximized(true);
+                                }
                             }
                             if frame_output.restore {
-                                self.window.set_maximized(false);
+                                if self.window.is_maximized() {
+                                    self.window.set_maximized(false);
+                                }
+                                if let Some(minimized) = self.window.is_minimized() {
+                                    if minimized {
+                                        self.window.set_minimized(false);
+                                    }
+                                }
                             }
                             if frame_output.swap_buffers
                                 && option_env!("THREE_D_SCREENSHOT").is_none()
@@ -359,5 +372,19 @@ impl Window {
     ///
     pub fn gl(&self) -> Context {
         (*self.gl).clone()
+    }
+
+    ///
+    /// Returns true if the window is minimized
+    ///
+    pub fn minimized(&self) -> Option<bool> {
+        self.window.is_minimized()
+    }
+
+    ///
+    /// Returns true if the window is maximized
+    ///
+    pub fn maximized(&self) -> bool {
+        self.window.is_maximized()
     }
 }

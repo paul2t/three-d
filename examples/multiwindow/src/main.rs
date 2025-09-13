@@ -107,7 +107,7 @@ pub fn main() {
                             windows.get_mut(window_id)
                         {
                             context.make_current().unwrap();
-                            let frame_input = frame_input_generator.generate(context);
+                            let frame_input = frame_input_generator.generate(context, window.is_minimized(), window.is_maximized());
 
                             scene.camera.set_viewport(frame_input.viewport);
                             scene.model.animate(frame_input.accumulated_time as f32);

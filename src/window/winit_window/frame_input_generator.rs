@@ -23,6 +23,8 @@ pub struct FrameInputGenerator {
     window_width: u32,
     window_height: u32,
     device_pixel_ratio: f64,
+    is_minimized: Option<bool>,
+    is_maximized: bool,
     cursor_pos: Option<LogicalPoint>,
     finger_id: Option<u64>,
     secondary_cursor_pos: Option<LogicalPoint>,
@@ -46,6 +48,8 @@ impl FrameInputGenerator {
             window_height,
             device_pixel_ratio,
             first_frame: true,
+            is_minimized: None,
+            is_maximized: false,
             last_time: Instant::now(),
             cursor_pos: None,
             finger_id: None,
@@ -66,7 +70,7 @@ impl FrameInputGenerator {
     ///
     /// Generates [FrameInput] for a new frame. This should be called each frame and the generated data should only be used for one frame.
     ///
-    pub fn generate(&mut self, context: &Context) -> FrameInput {
+    pub fn generate(&mut self, context: &Context, is_minimized: Option<bool>, is_maximized: bool) -> FrameInput {
         let now = Instant::now();
         let duration = now.duration_since(self.last_time);
         let elapsed_time =
@@ -84,6 +88,8 @@ impl FrameInputGenerator {
             device_pixel_ratio: self.device_pixel_ratio as f32,
             first_frame: self.first_frame,
             context: context.clone(),
+            is_minimized,
+            is_maximized,
         };
         self.first_frame = false;
 

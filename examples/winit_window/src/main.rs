@@ -66,7 +66,7 @@ pub fn main() {
                         context.resize(*physical_size);
                     }
                     winit::event::WindowEvent::RedrawRequested => {
-                        let mut frame_input = frame_input_generator.generate(&context);
+                        let mut frame_input = frame_input_generator.generate(&context, window.is_minimized(), window.is_maximized());
 
                         control.handle_events(&mut camera, &mut frame_input.events);
                         camera.set_viewport(frame_input.viewport);
