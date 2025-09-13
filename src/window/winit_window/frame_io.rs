@@ -79,6 +79,27 @@ pub struct FrameOutput {
     /// Whether to stop the render loop until next event.
     ///
     pub wait_next_event: bool,
+
+    ///
+    /// If this is true:
+    /// - On desktop, the window is minimized.
+    /// - On web, not tested, do probably nothing.
+    ///
+    pub minimize: bool,
+
+    ///
+    /// If this is true:
+    /// - On desktop, the window is maximized.
+    /// - On web, not tested, do probably nothing.
+    ///
+    pub maximize: bool,
+
+    ///
+    /// If this is true:
+    /// - On desktop, the window is restored.
+    /// - On web, not tested, do probably nothing.
+    ///
+    pub restore: bool,
 }
 
 impl Default for FrameOutput {
@@ -87,6 +108,9 @@ impl Default for FrameOutput {
             exit: false,
             swap_buffers: true,
             wait_next_event: false,
+            minimize: false,
+            maximize: false,
+            restore: false,
         }
     }
 }
