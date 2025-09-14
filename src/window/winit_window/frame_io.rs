@@ -91,21 +91,21 @@ pub struct FrameOutput {
     /// - On desktop, the window is minimized.
     /// - On web, not tested, do probably nothing.
     ///
-    pub minimize: bool,
+    pub request_minimize: bool,
 
     ///
     /// If this is true:
     /// - On desktop, the window is maximized.
     /// - On web, not tested, do probably nothing.
     ///
-    pub maximize: bool,
+    pub request_maximize: bool,
 
     ///
     /// If this is true:
     /// - On desktop, the window is restored.
     /// - On web, not tested, do probably nothing.
     ///
-    pub restore: bool,
+    pub request_restore: bool,
 }
 
 impl Default for FrameOutput {
@@ -114,9 +114,9 @@ impl Default for FrameOutput {
             exit: false,
             swap_buffers: true,
             wait_next_event: false,
-            minimize: false,
-            maximize: false,
-            restore: false,
+            request_minimize: false,
+            request_maximize: false,
+            request_restore: false,
         }
     }
 }

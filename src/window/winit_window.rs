@@ -296,19 +296,19 @@ impl Window {
                         if frame_output.exit {
                             event_loop.exit();
                         } else {
-                            if frame_output.minimize {
+                            if frame_output.request_minimize {
                                 if let Some(minimized) = self.window.is_minimized() {
                                     if !minimized {
                                         self.window.set_minimized(true);
                                     }
                                 }
                             }
-                            if frame_output.maximize {
+                            if frame_output.request_maximize {
                                 if !self.window.is_maximized() {
                                     self.window.set_maximized(true);
                                 }
                             }
-                            if frame_output.restore {
+                            if frame_output.request_restore {
                                 if self.window.is_maximized() {
                                     self.window.set_maximized(false);
                                 }
