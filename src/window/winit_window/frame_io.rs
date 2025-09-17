@@ -106,6 +106,13 @@ pub struct FrameOutput {
     /// - On web, not tested, do probably nothing.
     ///
     pub request_restore: bool,
+
+    ///
+    /// If this is true:
+    /// - On desktop, the window is dragged.
+    /// - On web, not tested, do probably nothing.
+    ///
+    pub request_drag_window: bool,
 }
 
 impl Default for FrameOutput {
@@ -117,6 +124,7 @@ impl Default for FrameOutput {
             request_minimize: false,
             request_maximize: false,
             request_restore: false,
+            request_drag_window: false,
         }
     }
 }

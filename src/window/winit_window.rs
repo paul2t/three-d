@@ -318,6 +318,9 @@ impl Window {
                                     }
                                 }
                             }
+                            if frame_output.request_drag_window {
+                                self.window.drag_window();
+                            }
                             if frame_output.swap_buffers
                                 && option_env!("THREE_D_SCREENSHOT").is_none()
                             {
