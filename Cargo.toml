@@ -22,6 +22,7 @@ window = ["glutin", "winit", "wasm-bindgen", "serde", "serde-wasm-bindgen", "web
 headless = ["glutin_029"] # Headless rendering
 egui-gui = ["egui_glow", "egui", "getrandom"] # Additional GUI features 
 text = ["swash", "lyon"] # Text mesh generation features
+record = [ "serde", "serde_json", "winit/serde" ]
 
 [dependencies]
 glow = "0.16"
@@ -35,6 +36,8 @@ egui_glow = { version = "0.31", optional = true }
 getrandom = { version = "0.2", features = ["js"], optional = true }
 swash = { version = "0.1", optional = true }
 lyon = { version = "1", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 glutin = { version = "0.32", optional = true }

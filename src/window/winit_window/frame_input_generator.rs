@@ -70,7 +70,12 @@ impl FrameInputGenerator {
     ///
     /// Generates [FrameInput] for a new frame. This should be called each frame and the generated data should only be used for one frame.
     ///
-    pub fn generate(&mut self, context: &Context, is_minimized: Option<bool>, is_maximized: bool) -> FrameInput {
+    pub fn generate(
+        &mut self,
+        context: &Context,
+        is_minimized: Option<bool>,
+        is_maximized: bool,
+    ) -> FrameInput {
         let now = Instant::now();
         let duration = now.duration_since(self.last_time);
         let elapsed_time =
@@ -90,6 +95,8 @@ impl FrameInputGenerator {
             context: context.clone(),
             is_minimized,
             is_maximized,
+            is_record: false,
+            is_replay: false,
         };
         self.first_frame = false;
 

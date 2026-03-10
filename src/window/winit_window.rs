@@ -13,6 +13,11 @@ pub use frame_io::*;
 mod frame_input_generator;
 pub use frame_input_generator::*;
 
+#[cfg(feature = "record")]
+mod event_recorder;
+#[cfg(feature = "record")]
+pub use event_recorder::*;
+
 mod windowed_context;
 pub use windowed_context::*;
 
@@ -243,105 +248,134 @@ impl Window {
     ///
     pub fn render_loop<F: 'static + FnMut(FrameInput) -> FrameOutput>(self, mut callback: F) {
         let mut frame_input_generator = FrameInputGenerator::from_winit_window(&self.window);
+        #[cfg(feature = "record")]
+        let mut recorder = EventRecorder::from_env();
+
         #[allow(deprecated)]
-        let _ = self.event_loop.run(move |event, event_loop| match event {
-            Event::LoopExiting => {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    use wasm_bindgen::JsCast;
-                    use winit::platform::web::WindowExtWebSys;
-                    if let Some(canvas) = self.window.canvas() {
-                        canvas
-                            .remove_event_listener_with_callback(
-                                "contextmenu",
-                                self.closure.as_ref().unchecked_ref(),
-                            )
-                            .unwrap();
+        let _ = self.event_loop.run(move |event, event_loop| {
+            #[cfg(feature = "record")]
+            let event = match recorder.process(&event) {
+                Some(e) => e,
+                None => {
+                    // Replay file exhausted — exit cleanly.
+                    eprintln!("[event-replay] All events replayed, exiting.");
+                    event_loop.exit();
+                    return;
+                }
+            };
+
+            match event {
+                Event::LoopExiting => {
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        use wasm_bindgen::JsCast;
+                        use winit::platform::web::WindowExtWebSys;
+                        if let Some(canvas) = self.window.canvas() {
+                            canvas
+                                .remove_event_listener_with_callback(
+                                    "contextmenu",
+                                    self.closure.as_ref().unchecked_ref(),
+                                )
+                                .unwrap();
+                        }
                     }
                 }
-            }
-            Event::AboutToWait => {
-                self.window.request_redraw();
-            }
-            Event::WindowEvent { ref event, .. } => {
-                frame_input_generator.handle_winit_window_event(event);
-                match event {
-                    WindowEvent::Resized(physical_size) => {
-                        self.gl.resize(*physical_size);
-                    }
-                    WindowEvent::RedrawRequested => {
-                        #[cfg(target_arch = "wasm32")]
-                        if self.maximized || option_env!("THREE_D_SCREENSHOT").is_some() {
-                            use winit::platform::web::WindowExtWebSys;
-
-                            if let Some(html_canvas) = self.window.canvas() {
-                                let browser_window = html_canvas
-                                    .owner_document()
-                                    .and_then(|doc| doc.default_view())
-                                    .or_else(web_sys::window)
-                                    .unwrap();
-                                _ = self.window.request_inner_size(dpi::LogicalSize {
-                                    width: browser_window.inner_width().unwrap().as_f64().unwrap(),
-                                    height: browser_window
-                                        .inner_height()
-                                        .unwrap()
-                                        .as_f64()
-                                        .unwrap(),
-                                });
-                            }
+                Event::AboutToWait => {
+                    self.window.request_redraw();
+                }
+                Event::WindowEvent { ref event, .. } => {
+                    frame_input_generator.handle_winit_window_event(event);
+                    match event {
+                        WindowEvent::Resized(physical_size) => {
+                            self.gl.resize(*physical_size);
                         }
+                        WindowEvent::RedrawRequested => {
+                            #[cfg(target_arch = "wasm32")]
+                            if self.maximized || option_env!("THREE_D_SCREENSHOT").is_some() {
+                                use winit::platform::web::WindowExtWebSys;
 
-                        let frame_input = frame_input_generator.generate(&self.gl, self.window.is_minimized(), self.window.is_maximized());
-                        let frame_output = callback(frame_input);
-                        if frame_output.exit {
-                            event_loop.exit();
-                        } else {
-                            if frame_output.request_minimize {
-                                if let Some(minimized) = self.window.is_minimized() {
-                                    if !minimized {
-                                        self.window.set_minimized(true);
-                                    }
+                                if let Some(html_canvas) = self.window.canvas() {
+                                    let browser_window = html_canvas
+                                        .owner_document()
+                                        .and_then(|doc| doc.default_view())
+                                        .or_else(web_sys::window)
+                                        .unwrap();
+                                    _ = self.window.request_inner_size(dpi::LogicalSize {
+                                        width: browser_window
+                                            .inner_width()
+                                            .unwrap()
+                                            .as_f64()
+                                            .unwrap(),
+                                        height: browser_window
+                                            .inner_height()
+                                            .unwrap()
+                                            .as_f64()
+                                            .unwrap(),
+                                    });
                                 }
                             }
-                            if frame_output.request_maximize {
-                                if !self.window.is_maximized() {
-                                    self.window.set_maximized(true);
-                                }
-                            }
-                            if frame_output.request_restore {
-                                if self.window.is_maximized() {
-                                    self.window.set_maximized(false);
-                                }
-                                if let Some(minimized) = self.window.is_minimized() {
-                                    if minimized {
-                                        self.window.set_minimized(false);
-                                    }
-                                }
-                            }
-                            if frame_output.request_drag_window {
-                                self.window.drag_window();
-                            }
-                            if frame_output.swap_buffers
-                                && option_env!("THREE_D_SCREENSHOT").is_none()
+
+                            let mut frame_input = frame_input_generator.generate(
+                                &self.gl,
+                                self.window.is_minimized(),
+                                self.window.is_maximized(),
+                            );
+                            #[cfg(feature = "record")]
                             {
-                                self.gl.swap_buffers().unwrap();
+                                frame_input.is_record = recorder.is_recording();
+                                frame_input.is_replay = recorder.is_replaying();
                             }
-                            if frame_output.wait_next_event {
-                                event_loop.set_control_flow(ControlFlow::Wait);
+                            let frame_output = callback(frame_input);
+                            if frame_output.exit {
+                                event_loop.exit();
                             } else {
-                                event_loop.set_control_flow(ControlFlow::Poll);
-                                self.window.request_redraw();
+                                if frame_output.request_minimize {
+                                    if let Some(minimized) = self.window.is_minimized() {
+                                        if !minimized {
+                                            self.window.set_minimized(true);
+                                        }
+                                    }
+                                }
+                                if frame_output.request_maximize {
+                                    if !self.window.is_maximized() {
+                                        self.window.set_maximized(true);
+                                    }
+                                }
+                                if frame_output.request_restore {
+                                    if self.window.is_maximized() {
+                                        self.window.set_maximized(false);
+                                    }
+                                    if let Some(minimized) = self.window.is_minimized() {
+                                        if minimized {
+                                            self.window.set_minimized(false);
+                                        }
+                                    }
+                                }
+                                if frame_output.request_drag_window {
+                                    self.window.drag_window();
+                                }
+                                if frame_output.swap_buffers
+                                    && option_env!("THREE_D_SCREENSHOT").is_none()
+                                {
+                                    self.gl.swap_buffers().unwrap();
+                                }
+                                if frame_output.wait_next_event {
+                                    event_loop.set_control_flow(ControlFlow::Wait);
+                                } else {
+                                    event_loop.set_control_flow(ControlFlow::Poll);
+                                    self.window.request_redraw();
+                                }
                             }
                         }
+                        // WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                        //     self.gl.resize(**new_inner_size);
+                        // }
+                        WindowEvent::CloseRequested => event_loop.exit(),
+                        _ => (),
                     }
-                    // WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                    //     self.gl.resize(**new_inner_size);
-                    // }
-                    WindowEvent::CloseRequested => event_loop.exit(),
-                    _ => (),
                 }
+                _ => (),
             }
-            _ => (),
         });
     }
 

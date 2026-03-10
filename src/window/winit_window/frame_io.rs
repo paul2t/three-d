@@ -44,6 +44,12 @@ pub struct FrameInput {
 
     /// Whether or not the window is maximized.
     pub is_maximized: bool,
+
+    /// Whether or not the window is in replay mode.
+    pub is_replay: bool,
+
+    /// Whether or not the window is in record mode.
+    pub is_record: bool,
 }
 
 impl FrameInput {
