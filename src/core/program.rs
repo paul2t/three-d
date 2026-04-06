@@ -15,16 +15,19 @@ pub struct Program {
     textures: RwLock<HashMap<String, u32>>,
     uniforms: HashMap<String, crate::context::UniformLocation>,
     uniform_blocks: RwLock<HashMap<String, (u32, u32)>>,
+    mode: u32,
 }
 
 impl Program {
     ///
     /// Creates a new shader program from the given vertex and fragment glsl shader source.
+    /// See [crate::context::TRIANGLES] and [crate::context::LINES] for example.
     ///
     pub fn from_source(
         context: &Context,
         vertex_shader_source: &str,
         fragment_shader_source: &str,
+        mode: u32,
     ) -> Result<Self, CoreError> {
         unsafe {
             let vert_shader = context
@@ -128,6 +131,7 @@ impl Program {
                 uniforms,
                 uniform_blocks: RwLock::new(HashMap::new()),
                 textures: RwLock::new(HashMap::new()),
+                mode,
             })
         }
     }
@@ -276,6 +280,7 @@ impl Program {
     /// Use this function if you want to use a texture which was created using low-level context calls and not using the functionality in the [texture] module.
     /// This function is only needed in special cases for example if you have a special source of texture data.
     ///
+    #[deprecated = "Instead, create normal textures, eg. Texture2D, using the new_unchecked() methods, eg. Texture2D::new_unchecked()"]
     pub fn use_raw_texture(&self, name: &str, target: u32, id: crate::context::Texture) {
         self.use_texture_internal(name);
         unsafe {
@@ -296,6 +301,22 @@ impl Program {
                 .active_texture(crate::context::TEXTURE0 + index);
         }
         index
+    }
+
+    #[allow(unused)]
+    pub(crate) fn enable_clip_plane(&self, index: u32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        unsafe {
+            self.context.enable(crate::context::CLIP_DISTANCE0 + index)
+        };
+    }
+
+    #[allow(unused)]
+    pub(crate) fn disable_clip_plane(&self, index: u32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        unsafe {
+            self.context.disable(crate::context::CLIP_DISTANCE0 + index)
+        };
     }
 
     ///
@@ -433,8 +454,7 @@ impl Program {
         self.context.set_render_states(render_states);
         self.use_program();
         unsafe {
-            self.context
-                .draw_arrays(crate::context::TRIANGLES, 0, count as i32);
+            self.context.draw_arrays(self.mode, 0, count as i32);
             for location in self.attributes.values() {
                 self.context.disable_vertex_attrib_array(*location);
             }
@@ -463,12 +483,8 @@ impl Program {
         self.context.set_render_states(render_states);
         self.use_program();
         unsafe {
-            self.context.draw_arrays_instanced(
-                crate::context::TRIANGLES,
-                0,
-                count as i32,
-                instance_count as i32,
-            );
+            self.context
+                .draw_arrays_instanced(self.mode, 0, count as i32, instance_count as i32);
             self.context
                 .bind_buffer(crate::context::ELEMENT_ARRAY_BUFFER, None);
             for location in self.attributes.values() {
@@ -500,7 +516,7 @@ impl Program {
             viewport,
             element_buffer,
             0,
-            element_buffer.count() as u32,
+            element_buffer.count(),
         )
     }
 
@@ -522,12 +538,8 @@ impl Program {
         self.use_program();
         element_buffer.bind();
         unsafe {
-            self.context.draw_elements(
-                crate::context::TRIANGLES,
-                count as i32,
-                T::data_type(),
-                first as i32,
-            );
+            self.context
+                .draw_elements(self.mode, count as i32, T::data_type(), first as i32);
             self.context
                 .bind_buffer(crate::context::ELEMENT_ARRAY_BUFFER, None);
 
@@ -560,7 +572,7 @@ impl Program {
             viewport,
             element_buffer,
             0,
-            element_buffer.count() as u32,
+            element_buffer.count(),
             instance_count,
         )
     }
@@ -584,7 +596,7 @@ impl Program {
         element_buffer.bind();
         unsafe {
             self.context.draw_elements_instanced(
-                crate::context::TRIANGLES,
+                self.mode,
                 count as i32,
                 T::data_type(),
                 first as i32,

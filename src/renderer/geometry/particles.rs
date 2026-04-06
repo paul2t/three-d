@@ -210,6 +210,10 @@ impl Geometry for ParticleSystem {
         )
     }
 
+    fn vertex_type(&self) -> u32 {
+        crate::context::TRIANGLES
+    }
+
     fn draw(&self, viewer: &dyn Viewer, program: &Program, render_states: RenderStates) {
         if let Some(inverse) = self.transformation.invert() {
             program.use_uniform_if_required("normalMatrix", inverse.transpose());

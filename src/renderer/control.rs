@@ -3,6 +3,8 @@
 //!
 
 mod orbit_control;
+use std::path::PathBuf;
+
 #[doc(inline)]
 pub use orbit_control::*;
 
@@ -18,9 +20,13 @@ mod fly_control;
 #[doc(inline)]
 pub use fly_control::*;
 
+mod control2d;
+#[doc(inline)]
+pub use control2d::*;
+
 pub use three_d_asset::PixelPoint as PhysicalPoint;
 
-use three_d_asset::Radians;
+use three_d_asset::prelude::*;
 
 /// Type of mouse button.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
@@ -133,6 +139,13 @@ pub enum Event {
     },
     /// Fires when some text has been written.
     Text(String),
+
+    /// Fires when a file has been dropped on the window.
+    DroppedFile(PathBuf),
+    /// Fires when a file hovers over the window.
+    HoveredFile(PathBuf),
+    /// Fires when a file hover is cancelled.
+    HoveredFileCancelled,
 }
 
 /// Keyboard key input.

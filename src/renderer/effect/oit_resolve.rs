@@ -1,18 +1,30 @@
 use crate::renderer::*;
 
 ///
-/// Copies the content of the color and/or depth texture by rendering a quad with those textures applied.
-/// The difference from [ScreenEffect] is that this effect does not apply any tone and color mapping specified in the [Viewer].
+/// Resolves the Order-Independent Transparency (OIT) effect.
 ///
-#[derive(Clone, Debug, Default)]
-pub struct CopyEffect {
-    /// Defines which channels (red, green, blue, alpha and depth) to copy.
-    pub write_mask: WriteMask,
+#[derive(Clone, Debug)]
+pub struct OitResolveEffect {
     /// Defines which type of blending to use when writing the copied color to the render target.
     pub blend: Blend,
 }
 
-impl Effect for CopyEffect {
+impl Default for OitResolveEffect {
+    fn default() -> Self {
+        Self {
+            blend: Blend::Enabled {
+                source_rgb_multiplier: BlendMultiplierType::OneMinusSrcAlpha,
+                source_alpha_multiplier: BlendMultiplierType::OneMinusSrcAlpha,
+                destination_rgb_multiplier: BlendMultiplierType::SrcAlpha,
+                destination_alpha_multiplier: BlendMultiplierType::SrcAlpha,
+                rgb_equation: BlendEquationType::Add,
+                alpha_equation: BlendEquationType::Add,
+            },
+        }
+    }
+}
+
+impl Effect for OitResolveEffect {
     fn fragment_shader_source(
         &self,
         _lights: &[&dyn crate::Light],
@@ -20,32 +32,16 @@ impl Effect for CopyEffect {
         depth_texture: Option<DepthTexture>,
     ) -> String {
         format!(
-            "{}{}
-
-            in vec2 uvs;
-            layout (location = 0) out vec4 outColor;
-
-            void main()
-            {{
-                {}
-                {}
-            }}
-
-        ",
-            color_texture
+            "{color}\n{depth}\n{tone_mapping}\n{color_mapping}\n{shader}",
+            color = color_texture
                 .map(|t| t.fragment_shader_source())
                 .unwrap_or("".to_string()),
-            depth_texture
+            depth = depth_texture
                 .map(|t| t.fragment_shader_source())
                 .unwrap_or("".to_string()),
-            color_texture
-                .map(|_| "
-                    outColor = sample_color(uvs);"
-                    .to_string())
-                .unwrap_or("".to_string()),
-            depth_texture
-                .map(|_| "gl_FragDepth = sample_depth(uvs);".to_string())
-                .unwrap_or("".to_string()),
+            tone_mapping = ToneMapping::fragment_shader_source(),
+            color_mapping = ColorMapping::fragment_shader_source(),
+            shader = include_str!("shaders/oit_resolve_effect.frag"),
         )
     }
 
@@ -54,13 +50,13 @@ impl Effect for CopyEffect {
         color_texture: Option<ColorTexture>,
         depth_texture: Option<DepthTexture>,
     ) -> EffectMaterialId {
-        EffectMaterialId::CopyEffect(color_texture, depth_texture)
+        EffectMaterialId::OitResolveEffect(color_texture, depth_texture)
     }
 
     fn use_uniforms(
         &self,
         program: &Program,
-        _viewer: &dyn Viewer,
+        viewer: &dyn Viewer,
         _lights: &[&dyn crate::Light],
         color_texture: Option<ColorTexture>,
         depth_texture: Option<DepthTexture>,
@@ -71,13 +67,15 @@ impl Effect for CopyEffect {
         if let Some(depth_texture) = depth_texture {
             depth_texture.use_uniforms(program);
         }
+        viewer.tone_mapping().use_uniforms(program);
+        viewer.color_mapping().use_uniforms(program);
     }
 
     fn render_states(&self) -> RenderStates {
         RenderStates {
             depth_test: DepthTest::Always,
-            cull: Cull::Back,
-            write_mask: self.write_mask,
+            cull: Cull::None,
+            write_mask: WriteMask::COLOR,
             blend: self.blend,
             line_width: 1.0,
         }

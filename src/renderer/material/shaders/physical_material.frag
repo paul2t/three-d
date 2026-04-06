@@ -38,6 +38,27 @@ in vec4 col;
 
 layout (location = 0) out vec4 outColor;
 
+#ifdef USE_OIT
+layout (location = 1) out float accumAlpha;
+#endif
+
+#ifdef USE_OIT
+float weight(float z, float a)
+{
+    // return (1 - z) * 10; // a * (1 + (1 + z));
+    // return clamp(pow(abs(z), -5), 1e-2, 3e3);
+    // float k = 0.01;
+    // return clamp(10 / (1 + 10 * pow(abs(z * k), 5)), 1e-2, 3e3);
+    // return 1e-2 * z;
+    // return clamp(10 / (1e-5 + pow(abs(z)/5, 2) + pow(abs(z)/200, 6)), 1e-2, 3e3);
+    // return clamp(pow(z, -4), 1e-2, 3e3);
+    // return clamp(10 / (1e-5 + pow(abs(z)/5, 3) + pow(abs(z)/200, 6)), 1e-2, 3e3);
+    // return clamp(0.03 / (1e-5 + pow(abs(z)/200, 4)), 1e-2, 3e3);
+    // return clamp(0.03 / (1e-5 + pow(abs(z)/200, 4)), 1e-2, 3e3);
+    return clamp(pow(min(1.0, a * 10.0) + 0.01, 3.0) * 1e8 * pow(1.0 - z * 0.9, 3.0), 1e-2, 3e3);
+}
+#endif  
+
 void main()
 {
     vec4 surface_color = albedo * col;
@@ -76,7 +97,15 @@ void main()
 #endif
 
     outColor.rgb = total_emissive + calculate_lighting(cameraPosition, surface_color.rgb, pos, normal, metallic_factor, roughness_factor, occlusion);
+    outColor.a = surface_color.a;
+
+#ifdef USE_OIT
+    vec4 color = outColor;
+    float w = color.a * weight(gl_FragCoord.z, color.a);
+    outColor = vec4(color.rgb * w, color.a);
+    accumAlpha = w;
+#else
     outColor.rgb = tone_mapping(outColor.rgb);
     outColor.rgb = color_mapping(outColor.rgb);
-    outColor.a = surface_color.a;
+#endif
 }

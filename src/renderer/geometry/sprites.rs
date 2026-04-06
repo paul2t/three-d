@@ -120,6 +120,10 @@ impl Geometry for Sprites {
         include_str!("shaders/sprites.vert").to_owned()
     }
 
+    fn vertex_type(&self) -> u32 {
+        crate::context::TRIANGLES
+    }
+
     fn id(&self) -> GeometryId {
         GeometryId::Sprites
     }

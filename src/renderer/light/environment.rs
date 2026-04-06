@@ -32,6 +32,27 @@ impl Environment {
     }
 
     ///
+    /// Computes the maps needed for physically based rendering with lighting from an environment from the given environment map.
+    ///
+    pub fn new_sized(
+        context: &Context,
+        environment_map: &TextureCubeMap,
+        irradiance_size: u32,
+        prefilter_size: u32,
+    ) -> Self {
+        Self::new_with_lighting_model_sized(
+            context,
+            environment_map,
+            LightingModel::Cook(
+                NormalDistributionFunction::TrowbridgeReitzGGX,
+                GeometryFunction::SmithSchlickGGX,
+            ),
+            irradiance_size,
+            prefilter_size,
+        )
+    }
+
+    ///
     /// Computes the maps needed for physically based rendering with lighting from an environment from the given environment map and with the specified lighting model.
     ///
     pub fn new_with_lighting_model(
@@ -39,8 +60,20 @@ impl Environment {
         environment_map: &TextureCubeMap,
         lighting_model: LightingModel,
     ) -> Self {
+        Self::new_with_lighting_model_sized(context, environment_map, lighting_model, 32, 128)
+    }
+
+    ///
+    /// Computes the maps needed for physically based rendering with lighting from an environment from the given environment map and with the specified lighting model.
+    ///
+    pub fn new_with_lighting_model_sized(
+        context: &Context,
+        environment_map: &TextureCubeMap,
+        lighting_model: LightingModel,
+        irradiance_size: u32,
+        prefilter_size: u32,
+    ) -> Self {
         // Diffuse
-        let irradiance_size = 32;
         let mut irradiance_map = TextureCubeMap::new_empty::<[f16; 4]>(
             context,
             irradiance_size,
@@ -63,14 +96,13 @@ impl Environment {
                             environment_map,
                             side,
                         },
-                        &Camera::new_2d(viewport),
+                        Camera::new_2d(viewport),
                         &[],
                     );
             }
         }
 
         // Prefilter
-        let prefilter_size = 128;
         let mut prefilter_map = TextureCubeMap::new_empty::<[f16; 4]>(
             context,
             prefilter_size,
@@ -100,7 +132,7 @@ impl Environment {
                                 mip,
                                 max_mip_levels,
                             },
-                            &Camera::new_2d(viewport),
+                            Camera::new_2d(viewport),
                             &[],
                         );
                 }
@@ -124,7 +156,7 @@ impl Environment {
             .clear(ClearState::default())
             .apply_screen_material(
                 &BrdfMaterial { lighting_model },
-                &Camera::new_2d(viewport),
+                Camera::new_2d(viewport),
                 &[],
             );
 

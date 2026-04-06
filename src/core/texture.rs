@@ -61,14 +61,27 @@ impl TextureDataType for Quat {}
 /// The basic data type used for each pixel in a depth texture.
 pub trait DepthTextureDataType: DepthDataType {}
 
-/// 24 bit float which can be used as [DepthTextureDataType].
+/// 24 bit unsigned int which can be used as [DepthTextureDataType].
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Default, Debug)]
-pub struct f24 {}
+pub struct u24 {}
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy, Default, Debug)]
+/// 24 bit unsigned int and 8 bit unsigned int which can be used as [DepthTextureDataType].
+/// This is the default format of the depth framebuffer. Use it to read from the depth buffer.
+pub struct u24u8 {}
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy, Default, Debug)]
+/// 32 bit float and 8 bit unsigned int which can be used as [DepthTextureDataType].
+pub struct f32u8 {}
 
 impl DepthTextureDataType for f16 {}
-impl DepthTextureDataType for f24 {}
+impl DepthTextureDataType for u24 {}
+#[cfg(not(target_arch = "wasm32"))]
+impl DepthTextureDataType for u32 {}
 impl DepthTextureDataType for f32 {}
+impl DepthTextureDataType for u24u8 {}
+impl DepthTextureDataType for f32u8 {}
 
 ///
 /// A reference to some type of texture containing colors.
@@ -82,6 +95,10 @@ pub enum ColorTexture<'a> {
     Array {
         texture: &'a Texture2DArray,
         layers: &'a [u32],
+    },
+    List {
+        textures: &'a [&'a Texture2D],
+        names: &'a [&'a str],
     },
     /// A cube map texture and a set of [CubeMapSide]s indicating the sides to use.
     CubeMap {
@@ -98,6 +115,7 @@ impl ColorTexture<'_> {
         match self {
             ColorTexture::Single(texture) => texture.width(),
             ColorTexture::Array { texture, .. } => texture.width(),
+            ColorTexture::List { textures, .. } => textures[0].width(),
             ColorTexture::CubeMap { texture, .. } => texture.width(),
         }
     }
@@ -109,6 +127,7 @@ impl ColorTexture<'_> {
         match self {
             ColorTexture::Single(texture) => texture.height(),
             ColorTexture::Array { texture, .. } => texture.height(),
+            ColorTexture::List { textures, .. } => textures[0].height(),
             ColorTexture::CubeMap { texture, .. } => texture.height(),
         }
     }
@@ -137,6 +156,31 @@ impl ColorTexture<'_> {
                     return texture(colorMap, vec3(uv, colorLayers[index]));
                 }"
             .to_owned(),
+            ColorTexture::List { textures, names } => {
+                let mut source = String::new();
+                for (i, _texture) in textures.iter().enumerate() {
+                    if let Some(name) = names.get(i) {
+                        source.push_str(&format!(
+                            "
+                            uniform sampler2D {name};
+                            vec4 sample_{name}(vec2 uv)
+                            {{
+                                return texture({name}, uv);
+                            }}",
+                        ));
+                    } else {
+                        source.push_str(&format!(
+                            "
+                            uniform sampler2D colorMap{i};
+                            vec4 sample_color_{i}(vec2 uv)
+                            {{
+                                return texture(colorMap{i}, uv);
+                            }}",
+                        ));
+                    }
+                }
+                source
+            }
             Self::CubeMap { .. } => todo!(),
         }
     }
@@ -146,11 +190,11 @@ impl ColorTexture<'_> {
     ///
     pub fn id(&self) -> u16 {
         match self {
-            Self::Single { .. } => 1u16 << 3,
-            Self::Array { .. } => 10u16 << 3,
-            Self::CubeMap { .. } => {
-                todo!()
-            }
+            // NOTE: I'm not sure if this is correct.
+            Self::Single { .. } => 1u16 << 0,
+            Self::Array { .. } => 1u16 << 1,
+            Self::List { .. } => 1u16 << 2,
+            Self::CubeMap { .. } => 1u16 << 3,
         }
     }
 
@@ -168,6 +212,15 @@ impl ColorTexture<'_> {
                     .for_each(|(i, l)| la[i] = *l as i32);
                 program.use_uniform_array("colorLayers", &la);
                 program.use_texture_array("colorMap", texture);
+            }
+            Self::List { textures, names } => {
+                for (i, texture) in textures.iter().enumerate() {
+                    if let Some(name) = names.get(i) {
+                        program.use_texture(name, texture);
+                    } else {
+                        program.use_texture(&format!("colorMap{i}"), texture);
+                    }
+                }
             }
             Self::CubeMap { .. } => todo!(),
         }

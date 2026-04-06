@@ -68,7 +68,7 @@ macro_rules! impl_render_target_extensions_body {
         ///
         /// Render the objects using the given viewer and lights into this render target.
         /// Use an empty array for the `lights` argument, if the objects does not require lights to be rendered.
-        /// Also, objects outside the viewer frustum are not rendered and the objects are rendered in the order given by [cmp_render_order].
+        /// Also, the objects are rendered in the order given by [cmp_render_order].
         ///
         pub fn render(
             &self,
@@ -82,7 +82,7 @@ macro_rules! impl_render_target_extensions_body {
         ///
         /// Render the objects using the given viewer and lights into the part of this render target defined by the scissor box.
         /// Use an empty array for the `lights` argument, if the objects does not require lights to be rendered.
-        /// Also, objects outside the viewer frustum are not rendered and the objects are rendered in the order given by [cmp_render_order].
+        /// Also, the objects are rendered in the order given by [cmp_render_order].
         ///
         pub fn render_partially(
             &self,
@@ -91,14 +91,12 @@ macro_rules! impl_render_target_extensions_body {
             objects: impl IntoIterator<Item = impl Object>,
             lights: &[&dyn Light],
         ) -> &Self {
-            let frustum = Frustum::new(viewer.projection() * viewer.view());
-            let (mut deferred_objects, mut forward_objects): (Vec<_>, Vec<_>) = objects
+            let (mut deferred_objects, forward_objects): (Vec<_>, Vec<_>) = objects
                 .into_iter()
-                .filter(|o| frustum.contains(o.aabb()))
                 .partition(|o| o.material_type() == MaterialType::Deferred);
 
             // Deferred
-            if deferred_objects.len() > 0 {
+            if !deferred_objects.is_empty() {
                 // Geometry pass
                 let geometry_pass_camera = GeometryPassCamera(&viewer);
                 let viewport = geometry_pass_camera.viewport();
@@ -150,14 +148,90 @@ macro_rules! impl_render_target_extensions_body {
             }
 
             // Forward
-            forward_objects.sort_by(|a, b| cmp_render_order(&viewer, a, b));
+            let (transparent_objects, mut opaque_objects): (Vec<_>, Vec<_>) = forward_objects
+                .iter()
+                .partition(|o| o.material_type() == MaterialType::TransparentOIT);
+
+            // Opaque pass
+            opaque_objects.sort_by(|a, b| cmp_render_order(&viewer, a, b));
             self.write_partially::<RendererError>(scissor_box, || {
-                for object in forward_objects {
+                for object in opaque_objects {
                     object.render(&viewer, lights);
                 }
                 Ok(())
             })
             .unwrap();
+
+            if !transparent_objects.is_empty() {
+                let camera = GeometryPassCamera(&viewer);
+                let viewport = camera.viewport();
+
+                // Read depth from back buffer
+                let mut depth_texture = DepthTexture2D::new::<u24u8>(
+                    &self.context,
+                    viewport.width,
+                    viewport.height,
+                    Wrapping::ClampToEdge,
+                    Wrapping::ClampToEdge,
+                );
+                let depth_target = depth_texture.as_depth_target();
+                RenderTarget::screen(&self.context, viewport.width, viewport.height)
+                    .blit_to(&depth_target.as_render_target());
+
+                // Transparent pass
+                let transparent_color_accum = Texture2D::new_empty::<[f16; 4]>(
+                    &self.context,
+                    viewport.width,
+                    viewport.height,
+                    Interpolation::Nearest,
+                    Interpolation::Nearest,
+                    None,
+                    Wrapping::ClampToEdge,
+                    Wrapping::ClampToEdge,
+                );
+                let transparent_alpha_accum = Texture2D::new_empty::<f32>(
+                    &self.context,
+                    viewport.width,
+                    viewport.height,
+                    Interpolation::Nearest,
+                    Interpolation::Nearest,
+                    None,
+                    Wrapping::ClampToEdge,
+                    Wrapping::ClampToEdge,
+                );
+                let transparent_buffers = [&transparent_color_accum, &transparent_alpha_accum];
+                let buffer_names = ["accumColorMap", "accumAlphaMap"];
+
+                RenderTarget::new(
+                    ColorTarget::new_texture2d_list(
+                        &self.context,
+                        &transparent_buffers,
+                        &buffer_names,
+                        None,
+                    ),
+                    depth_target,
+                )
+                .clear(ClearState::color(0.0, 0.0, 0.0, 1.0))
+                .write::<RendererError>(|| {
+                    for object in transparent_objects {
+                        object.render(&camera, lights);
+                    }
+                    Ok(())
+                })
+                .unwrap();
+
+                // Composite pass
+                self.apply_screen_effect(
+                    &OitResolveEffect::default(),
+                    &viewer,
+                    lights,
+                    Some(ColorTexture::List {
+                        textures: &transparent_buffers,
+                        names: &buffer_names,
+                    }),
+                    None,
+                );
+            }
             self
         }
 
@@ -193,12 +267,8 @@ macro_rules! impl_render_target_extensions_body {
             geometries: impl IntoIterator<Item = impl Geometry>,
             lights: &[&dyn Light],
         ) -> &Self {
-            let frustum = Frustum::new(viewer.projection() * viewer.view());
             self.write_partially::<RendererError>(scissor_box, || {
-                for geometry in geometries
-                    .into_iter()
-                    .filter(|o| frustum.contains(o.aabb()))
-                {
+                for geometry in geometries.into_iter() {
                     render_with_material(&self.context, &viewer, geometry, material, lights);
                 }
                 Ok(())
@@ -245,12 +315,8 @@ macro_rules! impl_render_target_extensions_body {
             color_texture: Option<ColorTexture>,
             depth_texture: Option<DepthTexture>,
         ) -> &Self {
-            let frustum = Frustum::new(viewer.projection() * viewer.view());
             self.write_partially::<RendererError>(scissor_box, || {
-                for geometry in geometries
-                    .into_iter()
-                    .filter(|o| frustum.contains(o.aabb()))
-                {
+                for geometry in geometries.into_iter() {
                     render_with_effect(
                         &self.context,
                         &viewer,
@@ -398,7 +464,7 @@ fn combine_ids(
     let mut id = geometry.0.to_le_bytes().to_vec();
     id.extend(effect_material.0.to_le_bytes());
     id.extend(lights.map(|l| l.0));
-    return id;
+    id
 }
 
 ///
@@ -421,6 +487,7 @@ pub fn render_with_material(
             context,
             &geometry.vertex_shader_source(),
             &material.fragment_shader_source(lights),
+            geometry.vertex_type(),
         ) {
             Ok(program) => program,
             Err(err) => panic!("{}", err.to_string()),
@@ -456,6 +523,7 @@ pub fn render_with_effect(
             context,
             &geometry.vertex_shader_source(),
             &effect.fragment_shader_source(lights, color_texture, depth_texture),
+            geometry.vertex_type(),
         ) {
             Ok(program) => program,
             Err(err) => panic!("{}", err.to_string()),
@@ -488,6 +556,7 @@ pub fn apply_screen_material(
             context,
             full_screen_vertex_shader_source(),
             &material.fragment_shader_source(lights),
+            full_screen_vertex_type(),
         ) {
             Ok(program) => program,
             Err(err) => panic!("{}", err.to_string()),
@@ -527,6 +596,7 @@ pub fn apply_screen_effect(
             context,
             full_screen_vertex_shader_source(),
             &effect.fragment_shader_source(lights, color_texture, depth_texture),
+            full_screen_vertex_type(),
         ) {
             Ok(program) => program,
             Err(err) => panic!("{}", err.to_string()),
@@ -575,9 +645,10 @@ pub fn cmp_render_order(
 ///
 pub fn pick(
     context: &Context,
-    camera: &Camera,
+    camera: &three_d_asset::Camera,
     pixel: impl Into<PhysicalPoint> + Copy,
     geometries: impl IntoIterator<Item = impl Geometry>,
+    culling: Cull,
 ) -> Option<IntersectionResult> {
     let pos = camera.position_at_pixel(pixel);
     let dir = camera.view_direction_at_pixel(pixel);
@@ -587,6 +658,7 @@ pub fn pick(
         dir,
         camera.z_far() - camera.z_near(),
         geometries,
+        culling,
     )
 }
 
@@ -612,6 +684,7 @@ pub fn ray_intersect(
     direction: Vec3,
     max_depth: f32,
     geometries: impl IntoIterator<Item = impl Geometry>,
+    culling: Cull,
 ) -> Option<IntersectionResult> {
     use crate::core::*;
     let viewport = Viewport::new_at_origo(1, 1);
@@ -623,7 +696,7 @@ pub fn ray_intersect(
     let camera = Camera::new_orthographic(
         viewport,
         position,
-        position + direction * max_depth,
+        position + direction,
         up,
         0.01,
         0.0,
@@ -649,6 +722,7 @@ pub fn ray_intersect(
     let mut material = IntersectionMaterial {
         ..Default::default()
     };
+    material.render_states.cull = culling;
     let result = RenderTarget::new(
         texture.as_color_target(None),
         depth_texture.as_depth_target(),

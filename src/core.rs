@@ -32,6 +32,10 @@ mod scissor_box;
 #[doc(inline)]
 pub use scissor_box::*;
 
+mod clip_plane;
+#[doc(inline)]
+pub use clip_plane::*;
+
 pub mod prelude {
 
     //!
@@ -96,15 +100,14 @@ pub(crate) fn full_screen_vertex_shader_source() -> &'static str {
     "
 }
 
+pub(crate) fn full_screen_vertex_type() -> u32 {
+    crate::context::TRIANGLES
+}
+
 mod data_type;
 use data_type::DataType;
 fn to_byte_slice<T: DataType>(data: &[T]) -> &[u8] {
-    unsafe {
-        std::slice::from_raw_parts(
-            data.as_ptr() as *const _,
-            data.len() * std::mem::size_of::<T>(),
-        )
-    }
+    unsafe { std::slice::from_raw_parts(data.as_ptr() as *const _, std::mem::size_of_val(data)) }
 }
 
 fn from_byte_slice<T: DataType>(data: &[u8]) -> &[T] {

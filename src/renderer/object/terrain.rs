@@ -341,6 +341,10 @@ impl Geometry for TerrainPatch {
         include_str!("shaders/terrain.vert").to_owned()
     }
 
+    fn vertex_type(&self) -> u32 {
+        crate::context::TRIANGLES
+    }
+
     fn draw(&self, viewer: &dyn Viewer, program: &Program, render_states: RenderStates) {
         program.use_uniform("viewProjectionMatrix", viewer.projection() * viewer.view());
         program.use_vertex_attribute("position", &self.positions_buffer);

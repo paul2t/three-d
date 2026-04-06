@@ -52,9 +52,81 @@ pub async fn run() {
         .geometries
         .iter_mut()
         .for_each(|m| m.compute_tangents());
-    let model = Model::<PhysicalMaterial>::new(&context, &cpu_model)
+    let mut model = Model::<PhysicalMaterial>::new(&context, &cpu_model)
         .unwrap()
         .remove(0);
+
+    let mut sphere = Gm::new(
+        Mesh::new(&context, &CpuMesh::sphere(16)),
+        PhysicalMaterial::new_opaque(
+            &context,
+            &CpuMaterial {
+                albedo: Srgba {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 255,
+                },
+                ..Default::default()
+            },
+        ),
+    );
+
+    #[derive(Copy, Clone, PartialEq, Eq)]
+    enum Orientation {
+        XPos,
+        XNeg,
+        YPos,
+        YNeg,
+        ZPos,
+        ZNeg,
+    }
+
+    fn orientation_to_vec3(orientation: Orientation) -> Vec3 {
+        match orientation {
+            Orientation::XPos => vec3(1.0, 0.0, 0.0),
+            Orientation::XNeg => vec3(-1.0, 0.0, 0.0),
+            Orientation::YPos => vec3(0.0, 1.0, 0.0),
+            Orientation::YNeg => vec3(0.0, -1.0, 0.0),
+            Orientation::ZPos => vec3(0.0, 0.0, 1.0),
+            Orientation::ZNeg => vec3(0.0, 0.0, -1.0),
+        }
+    }
+
+    fn get_orientation_coord(orientation: Orientation, coord: &mut Vec3) -> &mut f32 {
+        match orientation {
+            Orientation::XPos => &mut coord.x,
+            Orientation::XNeg => &mut coord.x,
+            Orientation::YPos => &mut coord.y,
+            Orientation::YNeg => &mut coord.y,
+            Orientation::ZPos => &mut coord.z,
+            Orientation::ZNeg => &mut coord.z,
+        }
+    }
+
+    fn orientation_to_string(orientation: Orientation) -> &'static str {
+        match orientation {
+            Orientation::XPos => "X+",
+            Orientation::XNeg => "X-",
+            Orientation::YPos => "Y+",
+            Orientation::YNeg => "Y-",
+            Orientation::ZPos => "Z+",
+            Orientation::ZNeg => "Z-",
+        }
+    }
+
+    const ORIENTATIONS: [Orientation; 6] = [
+        Orientation::XPos,
+        Orientation::XNeg,
+        Orientation::YPos,
+        Orientation::YNeg,
+        Orientation::ZPos,
+        Orientation::ZNeg,
+    ];
+
+    let mut clip_plane_enabled = false;
+    let mut clip_plane_pos = vec3(0.0, 0.0, 0.0);
+    let mut clip_plane_orientation = Orientation::ZPos;
 
     let light = AmbientLight::new_with_environment(&context, 1.0, Srgba::WHITE, skybox.texture());
 
@@ -80,10 +152,43 @@ pub async fn run() {
                     ui.checkbox(&mut normal_map_enabled, "Normal map");
                     ui.checkbox(&mut occlusion_map_enabled, "Occlusion map");
                     ui.checkbox(&mut emissive_map_enabled, "Emissive map");
+                    ui.separator();
+                    ui.checkbox(&mut clip_plane_enabled, "Clip plane");
+                    if clip_plane_enabled {
+                        ui.add(
+                            Slider::new(
+                                get_orientation_coord(clip_plane_orientation, &mut clip_plane_pos),
+                                -1.0..=1.0,
+                            )
+                            .text("Clip plane offset"),
+                        );
+                        ComboBox::from_label("Clip plane orientation")
+                            .selected_text(orientation_to_string(clip_plane_orientation))
+                            .show_ui(ui, |ui| {
+                                for orientation in ORIENTATIONS.iter() {
+                                    ui.selectable_value(
+                                        &mut clip_plane_orientation,
+                                        *orientation,
+                                        orientation_to_string(*orientation),
+                                    );
+                                }
+                            });
+                    }
                 });
                 panel_width = gui_context.used_rect().width();
             },
         );
+
+        let clip_plane = if clip_plane_enabled {
+            Some(ClipPlane::new(
+                clip_plane_pos,
+                orientation_to_vec3(clip_plane_orientation),
+            ))
+        } else {
+            None
+        };
+        model.geometry.set_clip_plane(clip_plane);
+        sphere.set_transformation(Mat4::from_translation(clip_plane_pos) * Mat4::from_scale(0.05));
 
         let viewport = Viewport {
             x: (panel_width * frame_input.device_pixel_ratio) as i32,

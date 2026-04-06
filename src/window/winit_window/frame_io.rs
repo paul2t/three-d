@@ -38,6 +38,18 @@ pub struct FrameInput {
 
     /// The graphics context for the window.
     pub context: Context,
+
+    /// Whether or not the window is minimized.
+    pub is_minimized: Option<bool>,
+
+    /// Whether or not the window is maximized.
+    pub is_maximized: bool,
+
+    /// Whether or not the window is in replay mode.
+    pub is_replay: bool,
+
+    /// Whether or not the window is in record mode.
+    pub is_record: bool,
 }
 
 impl FrameInput {
@@ -79,6 +91,34 @@ pub struct FrameOutput {
     /// Whether to stop the render loop until next event.
     ///
     pub wait_next_event: bool,
+
+    ///
+    /// If this is true:
+    /// - On desktop, the window is minimized.
+    /// - On web, not tested, do probably nothing.
+    ///
+    pub request_minimize: bool,
+
+    ///
+    /// If this is true:
+    /// - On desktop, the window is maximized.
+    /// - On web, not tested, do probably nothing.
+    ///
+    pub request_maximize: bool,
+
+    ///
+    /// If this is true:
+    /// - On desktop, the window is restored.
+    /// - On web, not tested, do probably nothing.
+    ///
+    pub request_restore: bool,
+
+    ///
+    /// If this is true:
+    /// - On desktop, the window is dragged.
+    /// - On web, not tested, do probably nothing.
+    ///
+    pub request_drag_window: bool,
 }
 
 impl Default for FrameOutput {
@@ -87,6 +127,10 @@ impl Default for FrameOutput {
             exit: false,
             swap_buffers: true,
             wait_next_event: false,
+            request_minimize: false,
+            request_maximize: false,
+            request_restore: false,
+            request_drag_window: false,
         }
     }
 }

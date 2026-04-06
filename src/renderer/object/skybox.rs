@@ -160,6 +160,10 @@ impl Geometry for Skybox {
         include_str!("shaders/skybox.vert").to_owned()
     }
 
+    fn vertex_type(&self) -> u32 {
+        crate::context::TRIANGLES
+    }
+
     fn id(&self) -> GeometryId {
         GeometryId::Skybox
     }

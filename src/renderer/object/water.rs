@@ -244,6 +244,10 @@ impl Geometry for WaterPatch {
         include_str!("shaders/water.vert").to_owned()
     }
 
+    fn vertex_type(&self) -> u32 {
+        crate::context::TRIANGLES
+    }
+
     fn id(&self) -> GeometryId {
         GeometryId::WaterPatch
     }

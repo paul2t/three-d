@@ -37,6 +37,27 @@ impl AmbientLight {
             environment: Some(Environment::new(context, environment_map)),
         }
     }
+
+    /// Constructs an ambient light that shines based on the given environment map.
+    pub fn new_with_environment_sized(
+        context: &Context,
+        intensity: f32,
+        color: Srgba,
+        environment_map: &TextureCubeMap,
+        irradiance_size: u32,
+        prefilter_size: u32,
+    ) -> Self {
+        Self {
+            intensity,
+            color,
+            environment: Some(Environment::new_sized(
+                context,
+                environment_map,
+                irradiance_size,
+                prefilter_size,
+            )),
+        }
+    }
 }
 
 impl Light for AmbientLight {

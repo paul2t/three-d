@@ -117,7 +117,7 @@ impl<'a> DepthTarget<'a> {
         self.as_render_target().read_depth_partially(scissor_box)
     }
 
-    pub(super) fn as_render_target(&self) -> RenderTarget<'a> {
+    pub(crate) fn as_render_target(&self) -> RenderTarget<'a> {
         RenderTarget::new_depth(self.clone())
     }
 

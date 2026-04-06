@@ -1,4 +1,4 @@
-use crate::renderer::*;
+use super::*;
 
 ///
 /// A control that makes the camera orbit around a target, with no fixed up direction.
@@ -24,7 +24,11 @@ impl FreeOrbitControl {
     }
 
     /// Handles the events. Must be called each frame.
-    pub fn handle_events(&mut self, camera: &mut Camera, events: &mut [Event]) -> bool {
+    pub fn handle_events(
+        &mut self,
+        camera: &mut three_d_asset::Camera,
+        events: &mut [Event],
+    ) -> bool {
         let mut change = false;
         for event in events.iter_mut() {
             match event {
@@ -34,13 +38,11 @@ impl FreeOrbitControl {
                     handled,
                     ..
                 } => {
-                    if !*handled {
-                        if Some(MouseButton::Left) == *button {
-                            let speed = 0.01 * self.target.distance(camera.position()) + 0.001;
-                            camera.rotate_around(self.target, speed * delta.0, speed * delta.1);
-                            *handled = true;
-                            change = true;
-                        }
+                    if !*handled && Some(MouseButton::Left) == *button {
+                        let speed = 0.01 * self.target.distance(camera.position()) + 0.001;
+                        camera.rotate_around(self.target, speed * delta.0, speed * delta.1);
+                        *handled = true;
+                        change = true;
                     }
                 }
                 Event::MouseWheel { delta, handled, .. } => {
