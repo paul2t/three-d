@@ -177,7 +177,7 @@ impl PhysicalMaterial {
 
     /// Returns whether this material is a transparent material
     pub fn is_transparent(&self) -> bool {
-        self.is_transparent || self.albedo.a < 255
+        self.is_transparent
     }
 }
 
