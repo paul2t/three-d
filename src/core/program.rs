@@ -424,29 +424,17 @@ impl Program {
     }
 
     ///
-    /// Draws `count` number of triangles with the given render states and viewport using this shader program.
+    /// Draws triangles with the given render states and viewport using this shader program.
+    /// The number of vertices to draw is defined by the `count` parameter.
     /// Requires that all attributes and uniforms have been defined using the use_attribute and use_uniform methods.
     /// Assumes that the data for the three vertices in a triangle is defined contiguous in each vertex buffer.
     /// If you want to use an [ElementBuffer], see [Program::draw_elements].
     ///
     pub fn draw_arrays(&self, render_states: RenderStates, viewport: Viewport, count: u32) {
-        self.context.set_viewport(viewport);
-        self.context.set_render_states(render_states);
-        self.use_program();
-        unsafe {
+        self.draw_with(render_states, viewport, move || unsafe {
             self.context
                 .draw_arrays(crate::context::TRIANGLES, 0, count as i32);
-            for location in self.attributes.values() {
-                self.context.disable_vertex_attrib_array(*location);
-            }
-            self.context.bind_vertex_array(None);
-        }
-        self.unuse_program();
-
-        #[cfg(debug_assertions)]
-        self.context
-            .error_check()
-            .expect("Unexpected rendering error occured")
+        })
     }
 
     ///
@@ -460,10 +448,7 @@ impl Program {
         count: u32,
         instance_count: u32,
     ) {
-        self.context.set_viewport(viewport);
-        self.context.set_render_states(render_states);
-        self.use_program();
-        unsafe {
+        self.draw_with(render_states, viewport, move || unsafe {
             self.context.draw_arrays_instanced(
                 crate::context::TRIANGLES,
                 0,
@@ -472,17 +457,7 @@ impl Program {
             );
             self.context
                 .bind_buffer(crate::context::ELEMENT_ARRAY_BUFFER, None);
-            for location in self.attributes.values() {
-                self.context.disable_vertex_attrib_array(*location);
-            }
-            self.context.bind_vertex_array(None);
-        }
-        self.unuse_program();
-
-        #[cfg(debug_assertions)]
-        self.context
-            .error_check()
-            .expect("Unexpected rendering error occured")
+        })
     }
 
     ///
@@ -501,12 +476,13 @@ impl Program {
             viewport,
             element_buffer,
             0,
-            element_buffer.count() as u32,
+            element_buffer.count(),
         )
     }
 
     ///
     /// Draws a subset of the triangles defined by the given [ElementBuffer] with the given render states and viewport using this shader program.
+    /// The number of vertices to draw is defined by the `count` parameter.
     /// Requires that all attributes and uniforms have been defined using the use_attribute and use_uniform methods.
     /// If you do not want to use an [ElementBuffer], see [Program::draw_arrays].
     ///
@@ -518,31 +494,14 @@ impl Program {
         first: u32,
         count: u32,
     ) {
-        self.context.set_viewport(viewport);
-        self.context.set_render_states(render_states);
-        self.use_program();
-        element_buffer.bind();
-        unsafe {
+        self.draw_elements_with(render_states, viewport, element_buffer, move || unsafe {
             self.context.draw_elements(
                 crate::context::TRIANGLES,
                 count as i32,
                 T::data_type(),
                 first as i32,
             );
-            self.context
-                .bind_buffer(crate::context::ELEMENT_ARRAY_BUFFER, None);
-
-            for location in self.attributes.values() {
-                self.context.disable_vertex_attrib_array(*location);
-            }
-            self.context.bind_vertex_array(None);
-        }
-        self.unuse_program();
-
-        #[cfg(debug_assertions)]
-        self.context
-            .error_check()
-            .expect("Unexpected rendering error occured")
+        })
     }
 
     ///
@@ -561,7 +520,7 @@ impl Program {
             viewport,
             element_buffer,
             0,
-            element_buffer.count() as u32,
+            element_buffer.count(),
             instance_count,
         )
     }
@@ -579,11 +538,7 @@ impl Program {
         count: u32,
         instance_count: u32,
     ) {
-        self.context.set_viewport(viewport);
-        self.context.set_render_states(render_states);
-        self.use_program();
-        element_buffer.bind();
-        unsafe {
+        self.draw_elements_with(render_states, viewport, element_buffer, move || unsafe {
             self.context.draw_elements_instanced(
                 crate::context::TRIANGLES,
                 count as i32,
@@ -591,19 +546,54 @@ impl Program {
                 first as i32,
                 instance_count as i32,
             );
-            self.context
-                .bind_buffer(crate::context::ELEMENT_ARRAY_BUFFER, None);
+        })
+    }
+
+    ///
+    /// Calls drawing callback `draw` after setting up rendering to use this shader program, cleaning up before return.
+    /// Requires that all attributes and uniforms have been defined using the [use_attribute] and [use_uniform] methods.
+    ///
+    pub fn draw_with(&self, render_states: RenderStates, viewport: Viewport, draw: impl FnOnce()) {
+        self.context.set_viewport(viewport);
+        self.context.set_render_states(render_states);
+        self.use_program();
+
+        draw();
+
+        unsafe {
             for location in self.attributes.values() {
                 self.context.disable_vertex_attrib_array(*location);
             }
             self.context.bind_vertex_array(None);
         }
+
         self.unuse_program();
 
         #[cfg(debug_assertions)]
         self.context
             .error_check()
             .expect("Unexpected rendering error occured")
+    }
+
+    ///
+    /// Calls drawing callback `draw` after setting up rendering to use this shader program and element buffer `elements`, cleaning up before return.
+    /// Requires that all attributes and uniforms have been defined using the [use_attribute] and [use_uniform] methods.
+    ///
+    pub fn draw_elements_with<T: ElementBufferDataType>(
+        &self,
+        render_states: RenderStates,
+        viewport: Viewport,
+        element_buffer: &ElementBuffer<T>,
+        draw: impl FnOnce(),
+    ) {
+        self.draw_with(render_states, viewport, move || {
+            element_buffer.bind();
+            draw();
+            unsafe {
+                self.context
+                    .bind_buffer(crate::context::ELEMENT_ARRAY_BUFFER, None);
+            }
+        })
     }
 
     ///

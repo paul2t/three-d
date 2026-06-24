@@ -130,9 +130,9 @@ pub async fn run() {
             frame_input.accumulated_time,
             frame_input.viewport,
             frame_input.device_pixel_ratio,
-            |gui_context| {
+            |ui| {
                 use three_d::egui::*;
-                SidePanel::left("side_panel").show(gui_context, |ui| {
+                Panel::left("side_panel").show_inside(ui, |ui| {
                     ui.heading("Debug Panel");
 
                     ui.label("Surface parameters");
@@ -167,12 +167,10 @@ pub async fn run() {
                     ui.add(Slider::new(&mut spot0.intensity, 0.0..=10.0).text("Spot intensity"));
                     ui.add(Slider::new(&mut point0.intensity, 0.0..=1.0).text("Point 0 intensity"));
                     ui.add(Slider::new(&mut point1.intensity, 0.0..=1.0).text("Point 1 intensity"));
-                    if ui.checkbox(&mut shadows_enabled, "Shadows").clicked() {
-                        if !shadows_enabled {
-                            spot0.clear_shadow_map();
-                            directional0.clear_shadow_map();
-                            directional1.clear_shadow_map();
-                        }
+                    if ui.checkbox(&mut shadows_enabled, "Shadows").clicked() && !shadows_enabled {
+                        spot0.clear_shadow_map();
+                        directional0.clear_shadow_map();
+                        directional1.clear_shadow_map();
                     }
 
                     ui.label("Lighting model");
@@ -227,7 +225,7 @@ pub async fn run() {
                     ui.radio_value(&mut material_type, MaterialType::Depth, "Depth");
                     ui.radio_value(&mut material_type, MaterialType::Orm, "ORM");
                 });
-                panel_width = gui_context.used_rect().width();
+                panel_width = frame_input.window_width as f32 - ui.available_width();
             },
         );
 
@@ -253,9 +251,9 @@ pub async fn run() {
 
         // Draw
         if shadows_enabled {
-            directional0.generate_shadow_map(1024, &model);
-            directional1.generate_shadow_map(1024, &model);
-            spot0.generate_shadow_map(1024, &model);
+            directional0.generate_shadow_map(1024, &model).unwrap();
+            directional1.generate_shadow_map(1024, &model).unwrap();
+            spot0.generate_shadow_map(1024, &model).unwrap();
         }
 
         let lights = [

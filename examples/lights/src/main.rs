@@ -67,9 +67,9 @@ pub async fn run() {
             frame_input.accumulated_time,
             frame_input.viewport,
             frame_input.device_pixel_ratio,
-            |gui_context| {
+            |ui| {
                 use three_d::egui::*;
-                SidePanel::left("side_panel").show(gui_context, |ui| {
+                Panel::left("side_panel").show_inside(ui, |ui| {
                     ui.heading("Debug Panel");
                     ui.add(Slider::new::<usize>(&mut light_count, 0..=50).text("Light count"));
                     ui.add(Slider::new::<f32>(&mut intensity, 0.0..=10.0).text("Light intensity"));
@@ -89,7 +89,7 @@ pub async fn run() {
                     ui.radio_value(&mut camera.tone_mapping, ToneMapping::Aces, "Aces");
                     ui.radio_value(&mut camera.tone_mapping, ToneMapping::Filmic, "Filmic");
                 });
-                panel_width = gui_context.used_rect().width();
+                panel_width = frame_input.window_width as f32 - ui.available_width();
             },
         );
         while lights.len() < light_count {
@@ -154,7 +154,7 @@ impl Glow {
         );
         Self {
             aabb,
-            light: PointLight::new(&context, 1.0, Srgba::WHITE, pos, Attenuation::default()),
+            light: PointLight::new(context, 1.0, Srgba::WHITE, pos, Attenuation::default()),
             velocity: vec3(
                 rng.gen::<f32>() * 2.0 - 1.0,
                 rng.gen::<f32>() * 2.0 - 1.0,

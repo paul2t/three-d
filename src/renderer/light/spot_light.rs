@@ -66,7 +66,7 @@ impl SpotLight {
         &mut self,
         texture_size: u32,
         geometries: impl IntoIterator<Item = impl Geometry> + Clone,
-    ) {
+    ) -> Result<(), RendererError> {
         let position = self.position;
         let target = position + self.direction.normalize();
         let up = compute_up_direction(self.direction);
@@ -94,7 +94,7 @@ impl SpotLight {
         );
         self.shadow_matrix = shadow_matrix(&shadow_camera);
 
-        let mut shadow_texture = DepthTexture2D::new::<f32>(
+        let shadow_texture = DepthTexture2D::new::<f32>(
             &self.context,
             texture_size,
             texture_size,
@@ -123,12 +123,12 @@ impl SpotLight {
                         &geometry,
                         &depth_material,
                         &[],
-                    );
+                    )?;
                 }
                 Ok(())
-            })
-            .unwrap();
+            })?;
         self.shadow_texture = Some(shadow_texture);
+        Ok(())
     }
 
     ///

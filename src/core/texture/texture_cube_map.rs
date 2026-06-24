@@ -276,7 +276,7 @@ impl TextureCubeMap {
         front_data: &[T],
         back_data: &[T],
     ) -> Self {
-        let mut texture = Self::new_empty::<T>(
+        let texture = Self::new_empty::<T>(
             context,
             cpu_texture.width,
             cpu_texture.height,
@@ -346,7 +346,7 @@ impl TextureCubeMap {
     /// It is therefore necessary to create a new texture if the texture size or format has changed.
     ///
     pub fn fill<T: TextureDataType>(
-        &mut self,
+        &self,
         right_data: &[T],
         left_data: &[T],
         top_data: &[T],
@@ -432,7 +432,7 @@ impl TextureCubeMap {
         cpu_texture: &CpuTexture,
     ) -> Self {
         let texture_size = cpu_texture.width / 4;
-        let mut texture = Self::new_empty::<[T; 4]>(
+        let texture = Self::new_empty::<[T; 4]>(
             context,
             texture_size,
             texture_size,
@@ -466,7 +466,7 @@ impl TextureCubeMap {
             let program = Program::from_source(
                 context,
                 full_screen_vertex_shader_source(),
-                &fragment_shader_source,
+                fragment_shader_source,
             )
             .expect("Failed compiling shader");
 
@@ -497,7 +497,7 @@ impl TextureCubeMap {
     /// **Note:** [DepthTest] is disabled if not also writing to a depth texture.
     ///
     pub fn as_color_target<'a>(
-        &'a mut self,
+        &'a self,
         sides: &'a [CubeMapSide],
         mip_level: Option<u32>,
     ) -> ColorTarget<'a> {
@@ -558,7 +558,9 @@ impl TextureCubeMap {
     /// using low-level context calls inside the callback.
     /// This function binds the texture and sets the parameters before calling the callback and generates mip maps afterwards.
     ///
-    /// **Note:** This function is unsafe and should only be used in special cases,
+    /// # Safety
+    ///
+    /// This function is unsafe and should only be used in special cases,
     /// for example when you have an uncommon source of data or the data is in a special format like sRGB.
     ///
     pub unsafe fn new_unchecked<T: TextureDataType>(

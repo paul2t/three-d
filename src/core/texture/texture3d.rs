@@ -40,7 +40,7 @@ impl Texture3D {
         cpu_texture: &CpuTexture3D,
         data: &[T],
     ) -> Self {
-        let mut texture = Self::new_empty::<T>(
+        let texture = Self::new_empty::<T>(
             context,
             cpu_texture.width,
             cpu_texture.height,
@@ -106,7 +106,7 @@ impl Texture3D {
     /// Will panic if the length of the data does not correspond to the width, height, depth and format specified at construction.
     /// It is therefore necessary to create a new texture if the texture size or format has changed.
     ///
-    pub fn fill<T: TextureDataType>(&mut self, data: &[T]) {
+    pub fn fill<T: TextureDataType>(&self, data: &[T]) {
         check_data_length::<T>(
             self.width,
             self.height,
@@ -173,7 +173,9 @@ impl Texture3D {
     /// using low-level context calls inside the callback.
     /// This function binds the texture and sets the parameters before calling the callback and generates mip maps afterwards.
     ///
-    /// **Note:** This function is unsafe and should only be used in special cases,
+    /// # Safety
+    ///
+    /// This function is unsafe and should only be used in special cases,
     /// for example when you have an uncommon source of data or the data is in a special format like sRGB.
     ///
     pub unsafe fn new_unchecked<T: TextureDataType>(

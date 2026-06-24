@@ -36,6 +36,7 @@ pub async fn run() {
         "examples/assets/Skybox_example.png",
         "examples/assets/PenguinBaseMesh.obj",
         "examples/assets/checkerboard.jpg",
+        "examples/assets/logo_transparent.png",
     ])
     .await
     .unwrap();
@@ -92,6 +93,38 @@ pub async fn run() {
             * Mat4::from_scale(20.0),
     );
 
+    // To render materials with transparancy, be sure to use a material configured for transparancy, either with the
+    // following, or by making sure the blend properties of the material are correct.
+    let logo_square = CpuMesh::square();
+    let logo_rgba: CpuTexture = loaded.deserialize("logo_transparent").unwrap(); // obtains the rgba texture.
+    let transparent_logo_material = ColorMaterial::new_transparent(
+        &context,
+        &CpuMaterial {
+            albedo_texture: Some(logo_rgba),
+            ..Default::default()
+        },
+    );
+    let mut logo_transparent =
+        Gm::new(Mesh::new(&context, &logo_square), transparent_logo_material);
+    logo_transparent
+        .set_transformation(Mat4::from_translation(vec3(-1.5, 0.5, 0.0)) * Mat4::from_scale(0.4));
+
+    // If instead an opaque material is used to draw an texture with an alpha channel, the alpha channel goes unused and
+    // the pixels usually hidden by the alpha channel are drawn. The transparent pixels can still have value, here the
+    // same texture is used as in the opaque logo example, but because the alpha channel is ignored a square will be
+    // visible in the logo instead of the correct triangle.
+    let logo_rgba: CpuTexture = loaded.deserialize("logo_transparent").unwrap();
+    let opaque_logo_material = ColorMaterial::new_opaque(
+        &context,
+        &CpuMaterial {
+            albedo_texture: Some(logo_rgba),
+            ..Default::default()
+        },
+    );
+    let mut logo_opaque = Gm::new(Mesh::new(&context, &logo_square), opaque_logo_material);
+    logo_opaque
+        .set_transformation(Mat4::from_translation(vec3(-1.5, -0.5, 0.0)) * Mat4::from_scale(0.4));
+
     // Lights
     let ambient = AmbientLight::new(&context, 0.4, Srgba::WHITE);
     let directional = DirectionalLight::new(&context, 2.0, Srgba::WHITE, vec3(0.0, -1.0, -1.0));
@@ -114,9 +147,9 @@ pub async fn run() {
             frame_input.accumulated_time,
             frame_input.viewport,
             frame_input.device_pixel_ratio,
-            |gui_context| {
+            |ui| {
                 use three_d::egui::*;
-                SidePanel::left("side_panel").show(gui_context, |ui| {
+                Panel::left("side_panel").show_inside(ui, |ui| {
                     ui.heading("Debug panel for ground texture");
                     ui.label("Wrap s");
                     ui.radio_value(&mut wrap_s, Wrapping::ClampToEdge, "ClampToEdge");
@@ -138,7 +171,7 @@ pub async fn run() {
                     ui.radio_value(&mut mipmap_filter, Interpolation::Nearest, "Nearest");
                     ui.radio_value(&mut mipmap_filter, Interpolation::Linear, "Linear");
                 });
-                panel_width = gui_context.used_rect().width();
+                panel_width = frame_input.window_width as f32 - ui.available_width();
             },
         );
 
@@ -183,6 +216,8 @@ pub async fn run() {
                     .into_iter()
                     .chain(&box_object)
                     .chain(&ground_object)
+                    .chain(&logo_opaque)
+                    .chain(&logo_transparent)
                     .chain(&skybox),
                 &[&ambient, &directional],
             )

@@ -25,7 +25,7 @@ impl Texture2DArray {
     ///
     pub fn new(context: &Context, cpu_textures: &[&CpuTexture]) -> Self {
         let cpu_texture = cpu_textures
-            .get(0)
+            .first()
             .expect("Expect at least one texture in a texture array");
         match &cpu_texture.data {
             TextureData::RU8(_) => Self::new_with_data(
@@ -129,7 +129,7 @@ impl Texture2DArray {
         cpu_texture: &CpuTexture,
         data: &[&[T]],
     ) -> Self {
-        let mut texture = Self::new_empty::<T>(
+        let texture = Self::new_empty::<T>(
             context,
             cpu_texture.width,
             cpu_texture.height,
@@ -192,7 +192,7 @@ impl Texture2DArray {
     /// Will panic if the data does not correspond to the width, height, depth and format specified at construction.
     /// It is therefore necessary to create a new texture if the texture size or format has changed.
     ///
-    pub fn fill<T: TextureDataType>(&mut self, data: &[&[T]]) {
+    pub fn fill<T: TextureDataType>(&self, data: &[&[T]]) {
         for (i, data) in data.iter().enumerate() {
             self.fill_layer(i as u32, data);
         }
@@ -205,7 +205,7 @@ impl Texture2DArray {
     /// Will panic if the layer number is bigger than the number of layers or if the data does not correspond to the width, height and format specified at construction.
     /// It is therefore necessary to create a new texture if the texture size or format has changed.
     ///
-    pub fn fill_layer<T: TextureDataType>(&mut self, layer: u32, data: &[T]) {
+    pub fn fill_layer<T: TextureDataType>(&self, layer: u32, data: &[T]) {
         if layer >= self.depth {
             panic!(
                 "cannot fill the layer {} with data, since there are only {} layers in the texture array",
@@ -243,7 +243,7 @@ impl Texture2DArray {
     /// **Note:** [DepthTest] is disabled if not also writing to a depth texture.
     ///
     pub fn as_color_target<'a>(
-        &'a mut self,
+        &'a self,
         layers: &'a [u32],
         mip_level: Option<u32>,
     ) -> ColorTarget<'a> {
@@ -304,7 +304,9 @@ impl Texture2DArray {
     /// using low-level context calls inside the callback.
     /// This function binds the texture and sets the parameters before calling the callback and generates mip maps afterwards.
     ///
-    /// **Note:** This function is unsafe and should only be used in special cases,
+    /// # Safety
+    ///
+    /// This function is unsafe and should only be used in special cases,
     /// for example when you have an uncommon source of data or the data is in a special format like sRGB.
     ///
     pub unsafe fn new_unchecked<T: TextureDataType>(

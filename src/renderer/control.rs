@@ -160,6 +160,23 @@ pub enum Key {
     End,
     PageUp,
     PageDown,
+    /// Print Screen/SysRq.
+    Snapshot,
+
+    Mute,
+    VolumeDown,
+    VolumeUp,
+
+    Copy,
+    Paste,
+    Cut,
+
+    /// `=`
+    Equals,
+    /// `-`
+    Minus,
+    /// `+`
+    Plus,
 
     /// Either from the main row or from the numpad.
     Num0,
@@ -208,6 +225,58 @@ pub enum Key {
     X,
     Y,
     Z,
+
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
+    F10,
+    F11,
+    F12,
+    F13,
+    F14,
+    F15,
+    F16,
+    F17,
+    F18,
+    F19,
+    F20,
+    F21,
+    F22,
+    F23,
+    F24,
+
+    /// `'`
+    Apostrophe,
+    /// `*`
+    Asterisk,
+    /// `\`
+    Backslash,
+    /// `^`
+    Caret,
+    /// `:`
+    Colon,
+    /// `,`
+    Comma,
+    /// `` ` ``
+    Grave,
+    /// `[`
+    LBracket,
+    /// `.`
+    Period,
+    /// `]`
+    RBracket,
+    /// `;`
+    Semicolon,
+    /// `/`
+    Slash,
+    /// `_`
+    Underline,
 }
 
 /// State of modifiers (alt, ctrl, shift and command).

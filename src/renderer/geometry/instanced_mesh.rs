@@ -20,8 +20,9 @@ pub struct InstancedMesh {
     instance_color: RwLock<Option<InstanceBuffer<Vec4>>>,
     last_camera_position: RwLock<Option<Vec3>>,
     aabb: AxisAlignedBoundingBox, // The AABB for the base mesh without transformations applied
+    instance_aabb: AxisAlignedBoundingBox, // The AABB for all the instances without the local to world transformation applied
     transformation: Mat4,
-    current_transformation: Mat4,
+    animation_transformation: Mat4,
     animation: Option<Box<dyn Fn(f32) -> Mat4 + Send + Sync>>,
     instances: Instances,
 }
@@ -37,7 +38,7 @@ impl InstancedMesh {
         instances.validate().expect("invalid instances");
 
         let aabb = cpu_mesh.compute_aabb();
-        let instanced_mesh = Self {
+        let mut instanced_mesh = Self {
             context: context.clone(),
             base_mesh: BaseMesh::new(context, cpu_mesh),
             transform: RwLock::new((
@@ -50,11 +51,13 @@ impl InstancedMesh {
             last_camera_position: RwLock::new(None),
             indices: RwLock::new((0..instances.transformations.len()).collect::<Vec<usize>>()),
             aabb,
+            instance_aabb: AxisAlignedBoundingBox::INFINITE,
             transformation: Mat4::identity(),
-            current_transformation: Mat4::identity(),
+            animation_transformation: Mat4::identity(),
             animation: None,
             instances: instances.clone(),
         };
+        instanced_mesh.update_instance_aabb();
         instanced_mesh.update_instance_buffers();
         instanced_mesh
     }
@@ -68,21 +71,21 @@ impl InstancedMesh {
 
     ///
     /// Set the local to world transformation applied to all instances.
-    /// This is applied before the transform for each instance.
+    /// This transformation is applied last, ie. after the instance transformation defined in [Self::set_instances] and the animation transformation defined by [Self::set_animation].
     ///
     pub fn set_transformation(&mut self, transformation: Mat4) {
         self.transformation = transformation;
-        self.current_transformation = transformation;
         *self.last_camera_position.write().unwrap() = None;
     }
 
     ///
     /// Specifies a function which takes a time parameter as input and returns a transformation that should be applied to this mesh at the given time.
     /// To actually animate this instanced mesh, call [Geometry::animate] at each frame which in turn evaluates the animation function defined by this method.
-    /// This transformation is applied first, then the local to world transformation defined by [Self::set_transformation].
+    /// This transformation is applied first, then the instance transformation defined in [Self::set_instances], then the local to world transformation defined by [Self::set_transformation].
     ///
     pub fn set_animation(&mut self, animation: impl Fn(f32) -> Mat4 + Send + Sync + 'static) {
         self.animation = Some(Box::new(animation));
+        self.animate(0.0);
     }
 
     /// Returns the number of instances that is rendered.
@@ -100,8 +103,19 @@ impl InstancedMesh {
         *self.indices.write().unwrap() =
             (0..instances.transformations.len()).collect::<Vec<usize>>();
         *self.last_camera_position.write().unwrap() = None;
-
+        self.update_instance_aabb();
         self.update_instance_buffers();
+    }
+
+    fn update_instance_aabb(&mut self) {
+        let mut aabb = AxisAlignedBoundingBox::EMPTY;
+        for instance_transformation in &self.instances.transformations {
+            aabb.expand_with_aabb(
+                self.aabb
+                    .transformed(instance_transformation * self.animation_transformation),
+            );
+        }
+        self.instance_aabb = aabb;
     }
 
     ///
@@ -185,7 +199,7 @@ impl Geometry for InstancedMesh {
                 .transformations
                 .iter()
                 .map(|m| {
-                    (m * self.current_transformation)
+                    (self.transformation * m * self.animation_transformation)
                         .w
                         .truncate()
                         .distance2(viewer.position())
@@ -200,7 +214,8 @@ impl Geometry for InstancedMesh {
         }
 
         program.use_uniform("viewProjection", viewer.projection() * viewer.view());
-        program.use_uniform("modelMatrix", self.current_transformation);
+        program.use_uniform("animationTransform", self.animation_transformation);
+        program.use_uniform("modelMatrix", self.transformation);
 
         let (row1, row2, row3) = &*self.transform.read().unwrap();
         program.use_instance_attribute("row1", row1);
@@ -253,18 +268,14 @@ impl Geometry for InstancedMesh {
     }
 
     fn aabb(&self) -> AxisAlignedBoundingBox {
-        let mut aabb = AxisAlignedBoundingBox::EMPTY;
-        let local_aabb = self.aabb.transformed(self.current_transformation);
-        for transformation in &self.instances.transformations {
-            aabb.expand_with_aabb(local_aabb.transformed(*transformation));
-        }
-        aabb
+        self.instance_aabb.transformed(self.transformation)
     }
 
     fn animate(&mut self, time: f32) {
         if let Some(animation) = &self.animation {
-            self.current_transformation = self.transformation * animation(time);
+            self.animation_transformation = animation(time);
             *self.last_camera_position.write().unwrap() = None;
+            self.update_instance_aabb();
         }
     }
 
@@ -274,7 +285,9 @@ impl Geometry for InstancedMesh {
         viewer: &dyn Viewer,
         lights: &[&dyn Light],
     ) {
-        render_with_material(&self.context, viewer, self, material, lights)
+        if let Err(e) = render_with_material(&self.context, viewer, self, material, lights) {
+            panic!("{}", e.to_string());
+        }
     }
 
     fn render_with_effect(
@@ -285,7 +298,7 @@ impl Geometry for InstancedMesh {
         color_texture: Option<ColorTexture>,
         depth_texture: Option<DepthTexture>,
     ) {
-        render_with_effect(
+        if let Err(e) = render_with_effect(
             &self.context,
             viewer,
             self,
@@ -293,7 +306,9 @@ impl Geometry for InstancedMesh {
             lights,
             color_texture,
             depth_texture,
-        )
+        ) {
+            panic!("{}", e.to_string());
+        }
     }
 }
 
@@ -307,6 +322,7 @@ impl Geometry for InstancedMesh {
 #[derive(Clone, Debug, Default)]
 pub struct Instances {
     /// The transformations applied to each instance.
+    /// This transformation is applied in between the animation transformation defined by [InstancedMesh::set_animation] and the transformation defined in [InstancedMesh::set_transformation].
     pub transformations: Vec<Mat4>,
     /// The texture transform applied to the uv coordinates of each instance.
     pub texture_transformations: Option<Vec<Mat3>>,

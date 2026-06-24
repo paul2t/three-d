@@ -111,7 +111,9 @@ impl Geometry for Imposters {
 
 impl Object for Imposters {
     fn render(&self, viewer: &dyn Viewer, lights: &[&dyn Light]) {
-        render_with_material(&self.context, viewer, &self, &self.material, lights)
+        if let Err(e) = render_with_material(&self.context, viewer, &self, &self.material, lights) {
+            panic!("{}", e.to_string());
+        }
     }
 
     fn material_type(&self) -> MaterialType {
@@ -185,7 +187,7 @@ impl ImpostersMaterial {
                 Wrapping::ClampToEdge,
                 Wrapping::ClampToEdge,
             );
-            let mut depth_texture = DepthTexture2D::new::<f32>(
+            let depth_texture = DepthTexture2D::new::<f32>(
                 &self.context,
                 texture_width,
                 texture_height,

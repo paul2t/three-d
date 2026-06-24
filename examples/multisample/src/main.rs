@@ -74,9 +74,9 @@ pub fn main() {
             frame_input.accumulated_time,
             frame_input.viewport,
             frame_input.device_pixel_ratio,
-            |gui_context| {
+            |ui| {
                 use three_d::egui::*;
-                SidePanel::left("side_panel").show(gui_context, |ui| {
+                Panel::left("side_panel").show_inside(ui, |ui| {
                     ui.heading("Debug Panel");
                     ui.radio_value(&mut render_steps, RenderMethod::Direct, "Direct (MSAA x4)");
                     ui.radio_value(
@@ -105,7 +105,7 @@ pub fn main() {
                         "To texture (MSAA x8)",
                     );
                 });
-                panel_width = gui_context.used_rect().width();
+                panel_width = frame_input.window_width as f32 - ui.available_width();
             },
         );
 
@@ -134,7 +134,7 @@ pub fn main() {
 
             RenderMethod::ToTexture => {
                 // Render the shapes to a non-multisample texture, and copy the color texture to the screen.
-                let mut color_texture = Texture2D::new_empty::<[u8; 4]>(
+                let color_texture = Texture2D::new_empty::<[u8; 4]>(
                     &context,
                     frame_input.viewport.width,
                     frame_input.viewport.height,
@@ -144,7 +144,7 @@ pub fn main() {
                     Wrapping::ClampToEdge,
                     Wrapping::ClampToEdge,
                 );
-                let mut depth_texture = DepthTexture2D::new::<f32>(
+                let depth_texture = DepthTexture2D::new::<f32>(
                     &context,
                     frame_input.viewport.width,
                     frame_input.viewport.height,

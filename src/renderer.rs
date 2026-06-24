@@ -27,11 +27,15 @@ use thiserror::Error;
 pub enum RendererError {
     #[error("{0} buffer length must be {1}, actual length is {2}")]
     InvalidBufferLength(String, usize, usize),
+    #[error("Failes partially updating the {0} buffer because it does not exist")]
+    PartialUpdateFailedMissingBuffer(String),
     #[error("the material {0} is required by the geometry {1} but could not be found")]
     MissingMaterial(String, String),
     #[cfg(feature = "text")]
     #[error("Failed to find font with index {0} in the given font collection")]
     MissingFont(u32),
+    #[error("CoreError: {0}")]
+    CoreError(#[from] CoreError),
 }
 
 mod shader_ids;
@@ -103,7 +107,7 @@ macro_rules! impl_render_target_extensions_body {
                 let geometry_pass_camera = GeometryPassCamera(&viewer);
                 let viewport = geometry_pass_camera.viewport();
                 deferred_objects.sort_by(|a, b| cmp_render_order(&geometry_pass_camera, a, b));
-                let mut geometry_pass_texture = Texture2DArray::new_empty::<[u8; 4]>(
+                let geometry_pass_texture = Texture2DArray::new_empty::<[u8; 4]>(
                     &self.context,
                     viewport.width,
                     viewport.height,
@@ -114,7 +118,7 @@ macro_rules! impl_render_target_extensions_body {
                     Wrapping::ClampToEdge,
                     Wrapping::ClampToEdge,
                 );
-                let mut geometry_pass_depth_texture = DepthTexture2D::new::<f32>(
+                let geometry_pass_depth_texture = DepthTexture2D::new::<f32>(
                     &self.context,
                     viewport.width,
                     viewport.height,
@@ -194,16 +198,17 @@ macro_rules! impl_render_target_extensions_body {
             lights: &[&dyn Light],
         ) -> &Self {
             let frustum = Frustum::new(viewer.projection() * viewer.view());
-            self.write_partially::<RendererError>(scissor_box, || {
+            if let Err(e) = self.write_partially::<RendererError>(scissor_box, || {
                 for geometry in geometries
                     .into_iter()
                     .filter(|o| frustum.contains(o.aabb()))
                 {
-                    render_with_material(&self.context, &viewer, geometry, material, lights);
+                    render_with_material(&self.context, &viewer, geometry, material, lights)?;
                 }
                 Ok(())
-            })
-            .unwrap();
+            }) {
+                panic!("{}", e.to_string());
+            }
             self
         }
 
@@ -246,7 +251,7 @@ macro_rules! impl_render_target_extensions_body {
             depth_texture: Option<DepthTexture>,
         ) -> &Self {
             let frustum = Frustum::new(viewer.projection() * viewer.view());
-            self.write_partially::<RendererError>(scissor_box, || {
+            if let Err(e) = self.write_partially::<RendererError>(scissor_box, || {
                 for geometry in geometries
                     .into_iter()
                     .filter(|o| frustum.contains(o.aabb()))
@@ -259,11 +264,12 @@ macro_rules! impl_render_target_extensions_body {
                         lights,
                         color_texture,
                         depth_texture,
-                    );
+                    )?;
                 }
                 Ok(())
-            })
-            .unwrap();
+            }) {
+                panic!("{}", e.to_string());
+            }
             self
         }
 
@@ -398,7 +404,7 @@ fn combine_ids(
     let mut id = geometry.0.to_le_bytes().to_vec();
     id.extend(effect_material.0.to_le_bytes());
     id.extend(lights.map(|l| l.0));
-    return id;
+    id
 }
 
 ///
@@ -412,22 +418,25 @@ pub fn render_with_material(
     geometry: impl Geometry,
     material: impl Material,
     lights: &[&dyn Light],
-) {
+) -> Result<(), RendererError> {
     let id = combine_ids(geometry.id(), material.id(), lights.iter().map(|l| l.id()));
 
     let mut programs = context.programs.write().unwrap();
-    let program = programs.entry(id).or_insert_with(|| {
-        match Program::from_source(
-            context,
-            &geometry.vertex_shader_source(),
-            &material.fragment_shader_source(lights),
-        ) {
-            Ok(program) => program,
-            Err(err) => panic!("{}", err.to_string()),
-        }
-    });
+    if !programs.contains_key(&id) {
+        programs.insert(
+            id.clone(),
+            Program::from_source(
+                context,
+                &geometry.vertex_shader_source(),
+                &material.fragment_shader_source(lights),
+            )?,
+        );
+    }
+    let program = programs.get(&id).unwrap();
+
     material.use_uniforms(program, &viewer, lights);
     geometry.draw(&viewer, program, material.render_states());
+    Ok(())
 }
 
 ///
@@ -443,7 +452,7 @@ pub fn render_with_effect(
     lights: &[&dyn Light],
     color_texture: Option<ColorTexture>,
     depth_texture: Option<DepthTexture>,
-) {
+) -> Result<(), RendererError> {
     let id = combine_ids(
         geometry.id(),
         effect.id(color_texture, depth_texture),
@@ -451,18 +460,20 @@ pub fn render_with_effect(
     );
 
     let mut programs = context.programs.write().unwrap();
-    let program = programs.entry(id).or_insert_with(|| {
-        match Program::from_source(
-            context,
-            &geometry.vertex_shader_source(),
-            &effect.fragment_shader_source(lights, color_texture, depth_texture),
-        ) {
-            Ok(program) => program,
-            Err(err) => panic!("{}", err.to_string()),
-        }
-    });
+    if !programs.contains_key(&id) {
+        programs.insert(
+            id.clone(),
+            Program::from_source(
+                context,
+                &geometry.vertex_shader_source(),
+                &effect.fragment_shader_source(lights, color_texture, depth_texture),
+            )?,
+        );
+    }
+    let program = programs.get(&id).unwrap();
     effect.use_uniforms(program, &viewer, lights, color_texture, depth_texture);
     geometry.draw(&viewer, program, effect.render_states());
+    Ok(())
 }
 
 ///
@@ -579,7 +590,7 @@ pub fn pick(
     pixel: impl Into<PhysicalPoint> + Copy,
     geometries: impl IntoIterator<Item = impl Geometry>,
     culling: Cull,
-) -> Option<IntersectionResult> {
+) -> Result<Option<IntersectionResult>, RendererError> {
     let pos = camera.position_at_pixel(pixel);
     let dir = camera.view_direction_at_pixel(pixel);
     ray_intersect(
@@ -615,7 +626,7 @@ pub fn ray_intersect(
     max_depth: f32,
     geometries: impl IntoIterator<Item = impl Geometry>,
     culling: Cull,
-) -> Option<IntersectionResult> {
+) -> Result<Option<IntersectionResult>, RendererError> {
     use crate::core::*;
     let viewport = Viewport::new_at_origo(1, 1);
     let up = if direction.dot(vec3(1.0, 0.0, 0.0)).abs() > 0.99 {
@@ -632,7 +643,7 @@ pub fn ray_intersect(
         0.0,
         max_depth,
     );
-    let mut texture = Texture2D::new_empty::<[f32; 4]>(
+    let texture = Texture2D::new_empty::<[f32; 4]>(
         context,
         viewport.width,
         viewport.height,
@@ -642,7 +653,7 @@ pub fn ray_intersect(
         Wrapping::ClampToEdge,
         Wrapping::ClampToEdge,
     );
-    let mut depth_texture = DepthTexture2D::new::<f32>(
+    let depth_texture = DepthTexture2D::new::<f32>(
         context,
         viewport.width,
         viewport.height,
@@ -661,21 +672,20 @@ pub fn ray_intersect(
     .write::<RendererError>(|| {
         for (id, geometry) in geometries.into_iter().enumerate() {
             material.geometry_id = id as u32;
-            render_with_material(context, &camera, &geometry, &material, &[]);
+            render_with_material(context, &camera, &geometry, &material, &[])?;
         }
         Ok(())
-    })
-    .unwrap()
+    })?
     .read_color::<[f32; 4]>()[0];
     let depth = result[0];
     if depth < 1.0 {
-        Some(IntersectionResult {
+        Ok(Some(IntersectionResult {
             position: position + direction * depth * max_depth,
             geometry_id: result[1].to_bits(),
             instance_id: result[2].to_bits(),
-        })
+        }))
     } else {
-        None
+        Ok(None)
     }
 }
 
