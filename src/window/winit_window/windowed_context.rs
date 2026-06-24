@@ -8,8 +8,8 @@ use winit::window::Window;
 mod inner {
     use crate::HardwareAcceleration;
     use serde::{Deserialize, Serialize};
-    use three_d_asset::Viewport;
     use wasm_bindgen::JsCast;
+    use web_sys::HtmlCanvasElement;
     use winit::platform::web::WindowExtWebSys;
 
     use super::*;
@@ -26,6 +26,7 @@ mod inner {
     /// A context used for rendering
     pub struct WindowedContext {
         pub(super) context: Context,
+        canvas: HtmlCanvasElement,
     }
 
     impl WindowedContext {
@@ -34,8 +35,15 @@ mod inner {
             window: &Window,
             settings: SurfaceSettings,
         ) -> Result<Self, WindowError> {
-            let canvas = window.canvas().ok_or(WindowError::WindowCreation)?;
+            let canvas = window.canvas().ok_or(WindowError::CanvasMissing)?;
+            Self::from_canvas(canvas, settings)
+        }
 
+        /// Creates a new context from a canvas.
+        pub fn from_canvas(
+            canvas: HtmlCanvasElement,
+            settings: SurfaceSettings,
+        ) -> Result<Self, WindowError> {
             // get webgl context and verify extensions
             let webgl_context = canvas
                 .get_context_with_context_options(
@@ -71,15 +79,14 @@ mod inner {
                 context: Context::from_gl_context(Arc::new(
                     crate::context::Context::from_webgl2_context(webgl_context),
                 ))?,
+                canvas,
             })
         }
 
         /// Resizes the context
         pub fn resize(&self, physical_size: winit::dpi::PhysicalSize<u32>) {
-            self.context.set_viewport(Viewport::new_at_origo(
-                physical_size.width.max(1),
-                physical_size.height.max(1),
-            ));
+            self.canvas.set_width(physical_size.width as u32);
+            self.canvas.set_height(physical_size.height as u32);
         }
 
         /// Make this context current. Needed when using multiple windows (contexts) on native.
@@ -96,9 +103,7 @@ mod inner {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod inner {
-    use glutin::{prelude::PossiblyCurrentGlContext, surface::*};
-
-    use crate::WinitError;
+    use glutin::{prelude::*, surface::*};
 
     use super::*;
     ///
@@ -121,15 +126,9 @@ mod inner {
                 Err(WindowError::InvalidNumberOfMSAASamples)?;
             }
             use glutin::prelude::*;
-            use winit::raw_window_handle::*;
-            let raw_display_handle = window
-                .display_handle()
-                .map_err(WinitError::HandleError)?
-                .as_raw();
-            let raw_window_handle = window
-                .window_handle()
-                .map_err(WinitError::HandleError)?
-                .as_raw();
+            use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+            let raw_display_handle = window.display_handle()?.as_raw();
+            let raw_window_handle = window.window_handle()?.as_raw();
 
             // EGL is crossplatform and the official khronos way
             // but sometimes platforms/drivers may not have it, so we use back up options

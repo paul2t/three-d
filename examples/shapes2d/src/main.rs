@@ -16,7 +16,6 @@ pub async fn run() {
     .unwrap();
     let context = window.gl();
     let scale_factor = window.device_pixel_ratio();
-    let (width, height) = window.size();
 
     let mut rectangle = Gm::new(
         Rectangle::new(
@@ -46,7 +45,7 @@ pub async fn run() {
         Line::new(
             &context,
             vec2(0.0, 0.0) * scale_factor,
-            vec2(width as f32, height as f32) * scale_factor,
+            vec2(500.0, 500.0) * scale_factor,
             5.0 * scale_factor,
         ),
         ColorMaterial {

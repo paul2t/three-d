@@ -7,6 +7,7 @@ struct Scene {
     model: Gm<Mesh, ColorMaterial>,
 }
 
+#[allow(deprecated)] // Uses the closure-based winit event loop
 pub fn main() {
     let event_loop = winit::event_loop::EventLoop::new().unwrap();
 
@@ -39,7 +40,7 @@ pub fn main() {
         let window_builder = {
             use wasm_bindgen::JsCast;
             use winit::platform::web::WindowAttributesExtWebSys;
-            window::Window::default_attributes()
+            winit::window::Window::default_attributes()
                 .with_canvas(Some(
                     web_sys::window()
                         .unwrap()
@@ -51,7 +52,8 @@ pub fn main() {
                         .dyn_into::<web_sys::HtmlCanvasElement>()
                         .unwrap(),
                 ))
-                .with_inner_size(winit::dpi::LogicalSize::new(720, 720))
+                .with_inner_size(winit::dpi::LogicalSize::new(500, 500))
+                .with_position(winit::dpi::LogicalPosition::new(600 * i, 0))
                 .with_prevent_default(true)
         };
         let window = event_loop.create_window(window_builder).unwrap();
@@ -89,56 +91,55 @@ pub fn main() {
         );
     }
 
-    _ = event_loop.run(move |event, event_loop| match &event {
-        winit::event::Event::AboutToWait => {
-            for (window, _, _, _) in windows.values() {
-                window.request_redraw();
-            }
-        }
-        winit::event::Event::WindowEvent { event, window_id } => {
-            if let Some((_, context, frame_input_generator, _)) = windows.get_mut(window_id) {
-                frame_input_generator.handle_winit_window_event(event);
-                match event {
-                    winit::event::WindowEvent::Resized(physical_size) => {
-                        context.resize(*physical_size);
-                    }
-                    winit::event::WindowEvent::RedrawRequested => {
-                        if let Some((window, context, frame_input_generator, scene)) =
-                            windows.get_mut(window_id)
-                        {
-                            context.make_current().unwrap();
-                            let frame_input = frame_input_generator.generate(context);
-
-                            scene.camera.set_viewport(frame_input.viewport);
-                            scene.model.animate(frame_input.accumulated_time as f32);
-                            frame_input
-                                .screen()
-                                .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0))
-                                .render(&scene.camera, &scene.model, &[]);
-
-                            context.swap_buffers().unwrap();
-                            event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
-                            window.request_redraw();
-                        }
-                    }
-                    // winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                    //     context.resize(**new_inner_size);
-                    // }
-                    winit::event::WindowEvent::CloseRequested => {
-                        if let Some((_, context, _, _)) = windows.get_mut(window_id) {
-                            context.make_current().unwrap();
-                        }
-
-                        windows.remove(window_id);
-
-                        if windows.is_empty() {
-                            event_loop.exit();
-                        }
-                    }
-                    _ => (),
+    event_loop
+        .run(move |event, event_loop| match &event {
+            winit::event::Event::AboutToWait => {
+                for (window, _, _, _) in windows.values() {
+                    window.request_redraw();
                 }
             }
-        }
-        _ => {}
-    });
+            winit::event::Event::WindowEvent { event, window_id } => {
+                if let Some((_, context, frame_input_generator, _)) = windows.get_mut(window_id) {
+                    frame_input_generator.handle_winit_window_event(event);
+                    match event {
+                        winit::event::WindowEvent::Resized(physical_size) => {
+                            context.resize(*physical_size);
+                        }
+                        winit::event::WindowEvent::RedrawRequested => {
+                            if let Some((window, context, frame_input_generator, scene)) =
+                                windows.get_mut(window_id)
+                            {
+                                context.make_current().unwrap();
+                                let frame_input = frame_input_generator.generate(context);
+
+                                scene.camera.set_viewport(frame_input.viewport);
+                                scene.model.animate(frame_input.accumulated_time as f32);
+                                frame_input
+                                    .screen()
+                                    .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0))
+                                    .render(&scene.camera, &scene.model, &[]);
+
+                                context.swap_buffers().unwrap();
+                                event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+                                window.request_redraw();
+                            }
+                        }
+                        winit::event::WindowEvent::CloseRequested => {
+                            if let Some((_, context, _, _)) = windows.get_mut(window_id) {
+                                context.make_current().unwrap();
+                            }
+
+                            windows.remove(window_id);
+
+                            if windows.is_empty() {
+                                event_loop.exit();
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            }
+            _ => {}
+        })
+        .unwrap();
 }

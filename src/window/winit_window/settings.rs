@@ -69,13 +69,14 @@ pub struct WindowSettings {
     pub min_size: (u32, u32),
     /// The maximum size of the window `(width, height)`, in logical pixels.
     /// If `None` is specified, the window can be maximized.
+    ///
+    /// On web this has no effect.
     pub max_size: Option<(u32, u32)>,
     /// The initial size of the window `(width, height)`, in logical pixels.
     /// If `None` is specified, defaults to max_size.
     ///
     /// On web, the size will be applied to the [canvas][WindowSettings::canvas], in logical pixels.
-    /// If `None` is specified on both this and max_size, the canvas will be
-    /// resized to the same size as the owner `Window`'s inner width and height.
+    /// If `None` is specified, the canvas is not resized.
     pub initial_size: Option<(u32, u32)>,
     /// Borderless mode.
     ///

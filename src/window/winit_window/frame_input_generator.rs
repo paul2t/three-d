@@ -63,16 +63,6 @@ impl FrameInputGenerator {
         Self::new(window.inner_size(), window.scale_factor())
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn window_width(&self) -> u32 {
-        self.window_width
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn window_height(&self) -> u32 {
-        self.window_height
-    }
-
     ///
     /// Generates [FrameInput] for a new frame. This should be called each frame and the generated data should only be used for one frame.
     ///
@@ -136,25 +126,17 @@ impl FrameInputGenerator {
                 self.window_width = logical_size.width;
                 self.window_height = logical_size.height;
             }
-            WindowEvent::ScaleFactorChanged {
-                scale_factor,
-                // new_inner_size,
-                ..
-            } => {
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 self.device_pixel_ratio = *scale_factor;
-                // self.viewport = Viewport::new_at_origo(new_inner_size.width, new_inner_size.height);
-                // let logical_size = new_inner_size.to_logical(self.device_pixel_ratio);
-                // self.window_width = logical_size.width;
-                // self.window_height = logical_size.height;
             }
             WindowEvent::Occluded(false) => {
                 self.first_frame = true;
             }
             WindowEvent::KeyboardInput { event, .. } => {
+                let state = event.state == winit::event::ElementState::Pressed;
                 if let PhysicalKey::Code(keycode) = event.physical_key {
                     use winit::keyboard::KeyCode;
-                    let state = event.state == winit::event::ElementState::Pressed;
-                    if let Some(kind) = translate_virtual_key_code(keycode) {
+                    if let Some(kind) = translate_key_code(keycode) {
                         self.events.push(if state {
                             crate::Event::KeyPress {
                                 kind,
@@ -195,16 +177,16 @@ impl FrameInputGenerator {
                         });
                     }
                 }
-                if let Some(text) = &event.text {
-                    let mut s = String::new();
-                    for ch in text.chars() {
-                        if is_printable_char(ch) && !self.modifiers.ctrl && !self.modifiers.command
-                        {
-                            s.push(ch);
+                if state {
+                    if let Some(text) = &event.text {
+                        for ch in text.chars() {
+                            if is_printable_char(ch)
+                                && !self.modifiers.ctrl
+                                && !self.modifiers.command
+                            {
+                                self.events.push(crate::Event::Text(ch.to_string()));
+                            }
                         }
-                    }
-                    if !s.is_empty() {
-                        self.events.push(crate::Event::Text(s));
                     }
                 }
             }
@@ -416,65 +398,78 @@ fn is_printable_char(chr: char) -> bool {
     !is_in_private_use_area && !chr.is_ascii_control()
 }
 
-fn translate_virtual_key_code(key: winit::keyboard::KeyCode) -> Option<crate::Key> {
-    use winit::keyboard::KeyCode;
+fn translate_key_code(key: winit::keyboard::KeyCode) -> Option<crate::Key> {
+    use winit::keyboard::KeyCode::*;
 
     Some(match key {
-        KeyCode::ArrowDown => Key::ArrowDown,
-        KeyCode::ArrowLeft => Key::ArrowLeft,
-        KeyCode::ArrowRight => Key::ArrowRight,
-        KeyCode::ArrowUp => Key::ArrowUp,
+        ArrowDown => Key::ArrowDown,
+        ArrowLeft => Key::ArrowLeft,
+        ArrowRight => Key::ArrowRight,
+        ArrowUp => Key::ArrowUp,
 
-        KeyCode::Escape => Key::Escape,
-        KeyCode::Tab => Key::Tab,
-        KeyCode::Backspace => Key::Backspace,
-        KeyCode::Enter => Key::Enter,
-        KeyCode::Space => Key::Space,
+        Escape => Key::Escape,
+        Tab => Key::Tab,
+        Backspace => Key::Backspace,
+        Enter | NumpadEnter => Key::Enter,
+        Space => Key::Space,
 
-        KeyCode::Insert => Key::Insert,
-        KeyCode::Delete => Key::Delete,
-        KeyCode::Home => Key::Home,
-        KeyCode::End => Key::End,
-        KeyCode::PageUp => Key::PageUp,
-        KeyCode::PageDown => Key::PageDown,
+        Insert => Key::Insert,
+        Delete => Key::Delete,
+        Home => Key::Home,
+        End => Key::End,
+        PageUp => Key::PageUp,
+        PageDown => Key::PageDown,
+        PrintScreen => Key::Snapshot,
 
-        KeyCode::Digit0 | KeyCode::Numpad0 => Key::Num0,
-        KeyCode::Digit1 | KeyCode::Numpad1 => Key::Num1,
-        KeyCode::Digit2 | KeyCode::Numpad2 => Key::Num2,
-        KeyCode::Digit3 | KeyCode::Numpad3 => Key::Num3,
-        KeyCode::Digit4 | KeyCode::Numpad4 => Key::Num4,
-        KeyCode::Digit5 | KeyCode::Numpad5 => Key::Num5,
-        KeyCode::Digit6 | KeyCode::Numpad6 => Key::Num6,
-        KeyCode::Digit7 | KeyCode::Numpad7 => Key::Num7,
-        KeyCode::Digit8 | KeyCode::Numpad8 => Key::Num8,
-        KeyCode::Digit9 | KeyCode::Numpad9 => Key::Num9,
+        AudioVolumeMute => Key::Mute,
+        AudioVolumeDown => Key::VolumeDown,
+        AudioVolumeUp => Key::VolumeUp,
 
-        KeyCode::KeyA => Key::A,
-        KeyCode::KeyB => Key::B,
-        KeyCode::KeyC => Key::C,
-        KeyCode::KeyD => Key::D,
-        KeyCode::KeyE => Key::E,
-        KeyCode::KeyF => Key::F,
-        KeyCode::KeyG => Key::G,
-        KeyCode::KeyH => Key::H,
-        KeyCode::KeyI => Key::I,
-        KeyCode::KeyJ => Key::J,
-        KeyCode::KeyK => Key::K,
-        KeyCode::KeyL => Key::L,
-        KeyCode::KeyM => Key::M,
-        KeyCode::KeyN => Key::N,
-        KeyCode::KeyO => Key::O,
-        KeyCode::KeyP => Key::P,
-        KeyCode::KeyQ => Key::Q,
-        KeyCode::KeyR => Key::R,
-        KeyCode::KeyS => Key::S,
-        KeyCode::KeyT => Key::T,
-        KeyCode::KeyU => Key::U,
-        KeyCode::KeyV => Key::V,
-        KeyCode::KeyW => Key::W,
-        KeyCode::KeyX => Key::X,
-        KeyCode::KeyY => Key::Y,
-        KeyCode::KeyZ => Key::Z,
+        Copy => Key::Copy,
+        Paste => Key::Paste,
+        Cut => Key::Cut,
+
+        Equal | NumpadEqual => Key::Equals,
+        Minus | NumpadSubtract => Key::Minus,
+        NumpadAdd => Key::Plus,
+
+        Digit0 | Numpad0 => Key::Num0,
+        Digit1 | Numpad1 => Key::Num1,
+        Digit2 | Numpad2 => Key::Num2,
+        Digit3 | Numpad3 => Key::Num3,
+        Digit4 | Numpad4 => Key::Num4,
+        Digit5 | Numpad5 => Key::Num5,
+        Digit6 | Numpad6 => Key::Num6,
+        Digit7 | Numpad7 => Key::Num7,
+        Digit8 | Numpad8 => Key::Num8,
+        Digit9 | Numpad9 => Key::Num9,
+
+        KeyA => Key::A,
+        KeyB => Key::B,
+        KeyC => Key::C,
+        KeyD => Key::D,
+        KeyE => Key::E,
+        KeyF => Key::F,
+        KeyG => Key::G,
+        KeyH => Key::H,
+        KeyI => Key::I,
+        KeyJ => Key::J,
+        KeyK => Key::K,
+        KeyL => Key::L,
+        KeyM => Key::M,
+        KeyN => Key::N,
+        KeyO => Key::O,
+        KeyP => Key::P,
+        KeyQ => Key::Q,
+        KeyR => Key::R,
+        KeyS => Key::S,
+        KeyT => Key::T,
+        KeyU => Key::U,
+        KeyV => Key::V,
+        KeyW => Key::W,
+        KeyX => Key::X,
+        KeyY => Key::Y,
+        KeyZ => Key::Z,
 
         F1 => Key::F1,
         F2 => Key::F2,
@@ -501,19 +496,16 @@ fn translate_virtual_key_code(key: winit::keyboard::KeyCode) -> Option<crate::Ke
         F23 => Key::F23,
         F24 => Key::F24,
 
-        Apostrophe => Key::Apostrophe,
-        Asterisk | NumpadMultiply => Key::Asterisk,
+        Quote => Key::Apostrophe,
+        NumpadMultiply | NumpadStar => Key::Asterisk,
         Backslash => Key::Backslash,
-        Caret => Key::Caret,
-        Colon => Key::Colon,
-        Comma => Key::Comma,
-        Grave => Key::Grave,
-        LBracket => Key::LBracket,
-        Period | NumpadDecimal | NumpadComma => Key::Period,
-        RBracket => Key::RBracket,
+        Comma | NumpadComma => Key::Comma,
+        Backquote => Key::Grave,
+        BracketLeft => Key::LBracket,
+        Period | NumpadDecimal => Key::Period,
+        BracketRight => Key::RBracket,
         Semicolon => Key::Semicolon,
         Slash | NumpadDivide => Key::Slash,
-        Underline => Key::Underline,
 
         _ => {
             return None;

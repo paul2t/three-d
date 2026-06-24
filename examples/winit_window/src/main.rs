@@ -1,5 +1,6 @@
 use three_d::{renderer::*, FrameInputGenerator, SurfaceSettings, WindowedContext};
 
+#[allow(deprecated)] // Uses the closure-based winit event loop
 pub fn main() {
     let event_loop = winit::event_loop::EventLoop::new().unwrap();
 
@@ -12,7 +13,7 @@ pub fn main() {
     let window_builder = {
         use wasm_bindgen::JsCast;
         use winit::platform::web::WindowAttributesExtWebSys;
-        window::Window::default_attributes()
+        winit::window::Window::default_attributes()
             .with_canvas(Some(
                 web_sys::window()
                     .unwrap()
@@ -54,8 +55,8 @@ pub fn main() {
 
     // Event loop
     let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
-    _ = event_loop.run(
-        move |event: winit::event::Event<()>, event_loop| match event {
+    event_loop
+        .run(move |event, event_loop| match event {
             winit::event::Event::AboutToWait => {
                 window.request_redraw();
             }
@@ -80,9 +81,6 @@ pub fn main() {
                         event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
                         window.request_redraw();
                     }
-                    // winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                    //     context.resize(**new_inner_size);
-                    // }
                     winit::event::WindowEvent::CloseRequested => {
                         event_loop.exit();
                     }
@@ -90,6 +88,6 @@ pub fn main() {
                 }
             }
             _ => {}
-        },
-    );
+        })
+        .unwrap();
 }
